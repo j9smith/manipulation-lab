@@ -1,0 +1,5 @@
+
+_target_: manipulation_lab.envs.tabletop.tasks.blocks_cfg.BlocksEnvCfg
+scene:
+  _target_: manipulation_lab.envs.tabletop.tasks.blocks_cfg.BlocksSceneCfg
+

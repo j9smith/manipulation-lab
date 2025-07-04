@@ -1,0 +1,5 @@
+device: "cuda:0"
+use_gpu_pipeline: true
+dt: 0.01
+substeps: 1
+gravity: [0.0, 0.0, -9.81]

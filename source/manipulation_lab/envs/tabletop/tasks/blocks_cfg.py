@@ -1,0 +1,154 @@
+from isaaclab.utils import configclass
+from isaaclab.envs import ManagerBasedRLEnvCfg, ManagerBasedEnvCfg
+import isaaclab.sim as sim_utils
+from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
+from isaaclab.sim import SimulationCfg
+
+from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
+from isaaclab.sim.spawners.lights import DomeLightCfg
+from manipulation_lab.assets.robots.franka import FRANKA_PANDA_CFG
+from isaaclab.assets import AssetBaseCfg
+from isaaclab.assets.articulation import ArticulationCfg
+from isaaclab.assets import RigidObject, RigidObjectCfg
+
+from isaaclab.sensors.camera import CameraCfg
+
+from isaaclab.managers import ObservationGroupCfg, ObservationTermCfg
+
+from manipulation_lab.envs.tabletop.scene.tabletop_cfg import TableTopSceneCfg
+
+import math
+
+from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
+
+@configclass
+class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
+    dome_light = AssetBaseCfg(
+        prim_path="/World/Light",
+        spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.5, 0.5, 0.5))
+    )
+
+    robot: ArticulationCfg = FRANKA_PANDA_CFG.replace(
+        prim_path="{ENV_REGEX_NS}/Robot",
+        init_state=ArticulationCfg.InitialStateCfg(
+        pos=(0.0, 0.52, 0.0),
+        rot=(-math.sin(math.pi/4), 0.0, 0.0, math.cos(math.pi/4)),
+        joint_pos={
+            "panda_joint1": 0.0,
+            "panda_joint2": -0.569,
+            "panda_joint3": 0.0,
+            "panda_joint4": -2.810,
+            "panda_joint5": 0.0,
+            "panda_joint6": 3.037,
+            "panda_joint7": 0.741,
+            "panda_finger_joint.*": 0.04,
+        },
+        )
+    )
+
+    scene_camera: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/SceneCamera",
+        offset=CameraCfg.OffsetCfg(pos=(1.1, 0.0, 0.8), 
+                                   rot=(0.0, -0.25, 0.0, 0.97), 
+                                   convention="world"),
+        debug_vis=True,
+        data_types=["rgb", "depth"],
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=10.0, 
+            focus_distance=400.0, 
+            horizontal_aperture=20.955, 
+            clipping_range=(0.1, 1.0e5)),
+        width=100,
+        height=100
+    )
+
+    wrist_camera: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/panda_hand/WristCamera",
+        offset=CameraCfg.OffsetCfg(pos=(0.15, 0.0, -0.049), # x = vertical, y = horizontal, z = forwards(+)/backwards(-)
+                                   rot=(0.0, math.cos(math.pi/4), 0.0, math.cos(math.pi/4)), 
+                                   convention="world"),
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=5.0, 
+            focus_distance=400.0, 
+            horizontal_aperture=20.955, 
+            clipping_range=(0.1, 1.0e5)),
+        width=50,
+        height=50
+    )
+
+    cuboid_red = RigidObjectCfg(
+        prim_path="{ENV_REGEX_NS}/CuboidRed",
+        spawn=sim_utils.MeshCuboidCfg(
+            size=(0.05, 0.05, 0.05),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(1.0, 0.0, 0.0)),
+            physics_material=sim_utils.RigidBodyMaterialCfg(),
+            collision_props=sim_utils.CollisionPropertiesCfg()
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.15, 0.0, 1.06)),
+    )
+
+    cuboid_blue = RigidObjectCfg(
+        prim_path="{ENV_REGEX_NS}/CuboidBlue",
+        spawn=sim_utils.MeshCuboidCfg(
+            size=(0.05, 0.05, 0.05),
+            rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+            visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0)),
+            physics_material=sim_utils.RigidBodyMaterialCfg(),
+            collision_props=sim_utils.CollisionPropertiesCfg()
+        ),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.15, 0.0, 1.06)),
+    )
+
+@configclass
+class BlocksEnvCfg(DirectRLEnvCfg):
+    sim: SimulationCfg = SimulationCfg()
+    decimation: int = 1
+    scene: BlocksSceneCfg = BlocksSceneCfg(env_spacing=2.5)
+    episode_length_s: int = 60
+    observation_space: int = 1
+    action_space: int = 1
+
+class BlocksEnv(DirectRLEnv):
+    cfg: BlocksEnvCfg
+
+    def __init__(self, cfg: BlocksEnvCfg):
+        super().__init__(cfg)
+
+    def _setup_scene(self):
+        pass
+
+
+# @configclass
+# class BlocksActionsCfg:
+#     pass
+
+# @configclass
+# class BlocksObservationsCfg:
+    
+#     @configclass
+#     class Policy(ObservationGroupCfg):
+#         wrist_rgb = ObservationTermCfg(
+#             #func=
+#         )
+
+# @configclass
+# class BlocksRewardsCfg:
+#     pass
+
+# @configclass
+# class BlocksTerminationsCfg:
+#     pass
+
+# @configclass
+# class BlocksTaskEnvCfg(ManagerBasedRLEnvCfg):
+#     sim: SimulationCfg = SimulationCfg()
+#     scene: BlocksTaskCfg = BlocksTaskCfg()#(env_spacing=2.5)
+#     actions: BlocksActionsCfg = BlocksActionsCfg()
+#     observations: BlocksObservationsCfg = BlocksObservationsCfg()
+#     decimation: int = 1
+#     rewards: BlocksRewardsCfg = BlocksRewardsCfg()
+#     terminations: BlocksTerminationsCfg = BlocksTerminationsCfg()
+
+#     def __post_init__(self):
+#         self.episode_length_s = 60
