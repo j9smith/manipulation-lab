@@ -6,14 +6,12 @@ from isaaclab.sim import SimulationCfg
 
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 from isaaclab.sim.spawners.lights import DomeLightCfg
-from manipulation_lab.assets.robots.franka import FRANKA_PANDA_CFG
+from isaaclab_assets.robots.franka import FRANKA_PANDA_HIGH_PD_CFG as FRANKA_PANDA_CFG
 from isaaclab.assets import AssetBaseCfg
 from isaaclab.assets.articulation import ArticulationCfg
 from isaaclab.assets import RigidObject, RigidObjectCfg
 
 from isaaclab.sensors.camera import CameraCfg
-
-from isaaclab.managers import ObservationGroupCfg, ObservationTermCfg
 
 from manipulation_lab.envs.tabletop.scene.tabletop_cfg import TableTopSceneCfg
 
@@ -23,6 +21,9 @@ from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
 
 @configclass
 class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
+    """
+    Design the scene
+    """
     dome_light = AssetBaseCfg(
         prim_path="/World/Light",
         spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.5, 0.5, 0.5))
@@ -102,6 +103,9 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
 
 @configclass
 class BlocksEnvCfg(DirectRLEnvCfg):
+    """
+    Create a config for the environment
+    """
     sim: SimulationCfg = SimulationCfg()
     decimation: int = 1
     scene: BlocksSceneCfg = BlocksSceneCfg(env_spacing=2.5)
@@ -110,6 +114,9 @@ class BlocksEnvCfg(DirectRLEnvCfg):
     action_space: int = 1
 
 class BlocksEnv(DirectRLEnv):
+    """
+    Load the environment
+    """
     cfg: BlocksEnvCfg
 
     def __init__(self, cfg: BlocksEnvCfg):
@@ -117,38 +124,3 @@ class BlocksEnv(DirectRLEnv):
 
     def _setup_scene(self):
         pass
-
-
-# @configclass
-# class BlocksActionsCfg:
-#     pass
-
-# @configclass
-# class BlocksObservationsCfg:
-    
-#     @configclass
-#     class Policy(ObservationGroupCfg):
-#         wrist_rgb = ObservationTermCfg(
-#             #func=
-#         )
-
-# @configclass
-# class BlocksRewardsCfg:
-#     pass
-
-# @configclass
-# class BlocksTerminationsCfg:
-#     pass
-
-# @configclass
-# class BlocksTaskEnvCfg(ManagerBasedRLEnvCfg):
-#     sim: SimulationCfg = SimulationCfg()
-#     scene: BlocksTaskCfg = BlocksTaskCfg()#(env_spacing=2.5)
-#     actions: BlocksActionsCfg = BlocksActionsCfg()
-#     observations: BlocksObservationsCfg = BlocksObservationsCfg()
-#     decimation: int = 1
-#     rewards: BlocksRewardsCfg = BlocksRewardsCfg()
-#     terminations: BlocksTerminationsCfg = BlocksTerminationsCfg()
-
-#     def __post_init__(self):
-#         self.episode_length_s = 60
