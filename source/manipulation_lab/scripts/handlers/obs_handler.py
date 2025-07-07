@@ -1,2 +1,0 @@
-class ObservationHandler:
-    pass
