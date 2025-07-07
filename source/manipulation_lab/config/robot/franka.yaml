@@ -1,0 +1,19 @@
+_target_: manipulation_lab.assets.robots.franka.FrankaPandaHighPDCfg
+prim_path: "{ENV_REGEX_NS}/Robot"
+init_state:
+  pos: [0.0, 0.52, 0.0]
+  rot: [-0.707, 0.0, 0.0, 0.707]
+  lin_vel: [0.0, 0.0, 0.0]
+  ang_vel: [0.0, 0.0, 0.0]
+  joint_vel:
+    ".*": 0.0
+  joint_pos:
+    panda_joint1: 0.0
+    panda_joint2: -0.569
+    panda_joint3: 0.0
+    panda_joint4: -2.810
+    panda_joint5: 0.0
+    panda_joint6: 3.037
+    panda_joint7: 0.741
+    panda_finger_joint1: 0.04
+    panda_finger_joint2: 0.04

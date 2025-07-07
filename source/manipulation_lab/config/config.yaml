@@ -1,4 +1,8 @@
 defaults:
+  - robot: franka
   - task: tabletop/blocks
   - sim: sim
-      
+  - _self_
+num_envs: 1
+teleop: false
+device: cuda
