@@ -1,1 +1,0 @@
-from . import tabletop_register
