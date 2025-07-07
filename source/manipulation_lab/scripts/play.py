@@ -19,22 +19,28 @@ sys.argv = [sys.argv[0]] + unknown
 app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
-import hydra
-from omegaconf import DictConfig
-from isaaclab_tasks.utils import parse_env_cfg
+# Patch IsaacLab functions to avoid errors with Hydra
+import manipulation_lab.scripts.utils._validation_patch
+import manipulation_lab.scripts.utils._resolve_names_patch
 
-from manipulation_lab.scripts.handlers.runner import TaskRunner
-from manipulation_lab.scripts.handlers.teleop_handler import TeleopHandler
+import hydra
+from omegaconf import DictConfig, OmegaConf
+from isaaclab_tasks.utils import parse_env_cfg
+from hydra.utils import instantiate
+import types
+
+from manipulation_lab.scripts.utils.runner import TaskRunner
+from manipulation_lab.scripts.utils.teleop_handler import TeleopHandler
 
 @hydra.main(config_path="../config", config_name="config", version_base=None)
 def main(cfg: DictConfig):
-    env_cfg = parse_env_cfg(
-    args_cli.task,
-    device = args_cli.device,
-    num_envs=args_cli.num_envs
-    )
+    print(OmegaConf.to_yaml(cfg, resolve=True))
+    cfg.num_envs = args_cli.num_envs
+    cfg.device = args_cli.device
 
-    if not args_cli.teleop:
+    env_cfg = instantiate(cfg.task)
+
+    if not cfg.teleop:
         runner = TaskRunner(cfg)
         runner.run(simulation_app=simulation_app, 
                 env_cfg=env_cfg,

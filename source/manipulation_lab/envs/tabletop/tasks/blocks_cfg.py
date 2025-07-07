@@ -19,6 +19,8 @@ import math
 
 from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
 
+from omegaconf import MISSING
+
 @configclass
 class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
     """
@@ -29,23 +31,7 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
         spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.5, 0.5, 0.5))
     )
 
-    robot: ArticulationCfg = FRANKA_PANDA_CFG.replace(
-        prim_path="{ENV_REGEX_NS}/Robot",
-        init_state=ArticulationCfg.InitialStateCfg(
-        pos=(0.0, 0.52, 0.0),
-        rot=(-math.sin(math.pi/4), 0.0, 0.0, math.cos(math.pi/4)),
-        joint_pos={
-            "panda_joint1": 0.0,
-            "panda_joint2": -0.569,
-            "panda_joint3": 0.0,
-            "panda_joint4": -2.810,
-            "panda_joint5": 0.0,
-            "panda_joint6": 3.037,
-            "panda_joint7": 0.741,
-            "panda_finger_joint.*": 0.04,
-        },
-        )
-    )
+    robot: ArticulationCfg = MISSING
 
     scene_camera: CameraCfg = CameraCfg(
         prim_path="{ENV_REGEX_NS}/SceneCamera",
