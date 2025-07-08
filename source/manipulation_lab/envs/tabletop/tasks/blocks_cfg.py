@@ -63,6 +63,34 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
         height=50
     )
 
+    left_shoulder_camera: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/panda_link0/LeftShoulderCamera",
+        offset=CameraCfg.OffsetCfg(pos=(0.0, 0.6, 0.6),
+                                   rot=(0.88, 0.15, 0.20, -0.41), 
+                                   convention="world"),
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=10.0, 
+            focus_distance=400.0, 
+            horizontal_aperture=20.955, 
+            clipping_range=(0.1, 1.0e5)),
+        width=50,
+        height=50
+    )
+    
+    right_shoulder_camera: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/panda_link0/RightShoulderCamera",
+        offset=CameraCfg.OffsetCfg(pos=(-0.1, -0.8, 0.5),
+                                   rot=(0.87, -0.14, 0.21, 0.43), 
+                                   convention="world"),
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=10.0, 
+            focus_distance=400.0, 
+            horizontal_aperture=20.955, 
+            clipping_range=(0.1, 1.0e5)),
+        width=50,
+        height=50
+    )
+
     cuboid_red = RigidObjectCfg(
         prim_path="{ENV_REGEX_NS}/CuboidRed",
         spawn=sim_utils.MeshCuboidCfg(
