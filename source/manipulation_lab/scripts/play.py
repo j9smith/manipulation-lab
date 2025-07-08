@@ -26,6 +26,8 @@ simulation_app = app_launcher.app
 # Patch IsaacLab functions to avoid errors with Hydra
 import manipulation_lab.scripts.utils._validation_patch
 import manipulation_lab.scripts.utils._resolve_names_patch
+logger.info("Patched string_utils.resolve_matching_names_values with manipulation_lab.scripts.utils._resolve_names_patch._patched_resolve_names_values")
+logger.info("Patched configclass._validate with manipulation_lab.scripts.utils._validation_patch._patched_validate")
 
 # Hydra imports
 import hydra

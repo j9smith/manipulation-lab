@@ -1,5 +1,8 @@
 """Socket listener for remote teleoperation."""
 
+import logging
+logger = logging.getLogger("ManipulationLab.SocketListener")
+
 from concurrent.futures import thread
 import socket
 from multiprocessing import Array
@@ -18,7 +21,7 @@ def start_socket_listener(action_array: Array, port: int = 8888):
         
         # Accept inbound connection
         conn, addr = s.accept()
-        print(f"Teleop connected from {addr}")
+        logger.info(f"Teleop connected from {addr}")
 
         # Initialise byte buffer
         buffer = b""
@@ -35,12 +38,13 @@ def start_socket_listener(action_array: Array, port: int = 8888):
             while b'\n' in buffer:
                 line, buffer = buffer.split(b'\n', 1)
                 msg = line.decode().strip()
-                
                 try:
                     parts = list(map(float, msg.split(',')))
-                    if len(parts) == 6:
+                    if len(parts) == 7:
                         for idx, value in enumerate(parts):
                             action_array[idx] = value
+                    else: 
+                        print(f"Received message with unexpected dimensions: {len(parts)}")
                 except Exception as e:
                     print(f"Failed parsing message: {e}")
 
