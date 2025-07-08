@@ -59,7 +59,16 @@ class ActionHandler:
         """
         if not isinstance(action, torch.Tensor):
             action = torch.tensor(action, device=self.robot.device)
-        
+        else:
+            action = action.to(self.robot.device)
+
+        # Extract only the Cartesian elements of the action tensor
+        cartesian_action = action[:, :6]
+
+        # Extract only the gripper element of the action tensor (dim=1)
+        # Then broadcast the gripper action to the two finger joints (dim=2)
+        gripper_action = action[:, 6:].repeat(1, 2)
+
         # Get the Jacobian matrix for the end effector
         jacobian = self.robot.root_physx_view.get_jacobians()[:, self.ee_jacobi_idx, :, :7]
 
@@ -79,11 +88,11 @@ class ActionHandler:
         # Set the target pose for the IK controller
         if self.diff_ik_controller.cfg.use_relative_mode:
             self.diff_ik_controller.set_command(
-                command=action,
+                command=cartesian_action,
                 ee_pos=ee_pose_r,
                 ee_quat=ee_quat_r
             )
-        else: self.diff_ik_controller.set_command(command=action)
+        else: self.diff_ik_controller.set_command(command=cartesian_action)
 
         # Calculate joint positions to reach target pose
         desired_joint_pos = self.diff_ik_controller.compute(
@@ -93,11 +102,14 @@ class ActionHandler:
             joint_pos=current_joint_pos
         )
 
-        full_joints = self.robot.data.joint_pos.clone()
-        full_joints[:, :7] = desired_joint_pos
+        # Calculate the new gripper positions
+        previous_gripper_pos = self.robot.data.joint_pos.clone()[:, 7:]
+        new_gripper_pos = previous_gripper_pos + gripper_action
 
-        return full_joints
+        # Concatenate the desired joint positions with the gripper action
+        desired_joint_pos = torch.cat([desired_joint_pos, new_gripper_pos], dim=1)
 
+        return desired_joint_pos
 
     def apply(self, action):
         """
@@ -122,7 +134,7 @@ class ActionHandler:
         """
         if action.dim() == 1:
             action = action.unsqueeze(0)
-        if action.shape[-1] != 6:
+        if action.shape[-1] != 7:
             raise ValueError(
                 "Delta Cartesian actions must be of length 6. "
                 f"The provided action has shape {action.shape}."
