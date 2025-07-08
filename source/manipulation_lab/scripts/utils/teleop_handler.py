@@ -1,15 +1,18 @@
 """Provides an env wrapper for teleoperation"""
 
+import logging
+logger = logging.getLogger("ManipulationLab.TeleopHandler")
+
 from manipulation_lab.scripts.utils.action_handler import ActionHandler
 from multiprocessing import Array
-import gymnasium as gym
-from typing import Any
 import torch
-from isaaclab.envs.direct_rl_env import DirectRLEnv
 
 class TeleopHandler:
-    def __init__(self, remote_connection=True):
-        self.action_handler = ActionHandler
+    def __init__(self, env, remote_connection=True):
+        self.env = env
+        self.sim = self.env.unwrapped.sim
+        self.scene = self.env.unwrapped.scene
+        self.action_handler = ActionHandler(env=self.env, control_mode="delta_cartesian")
         self.remote_connection = remote_connection
         self.action_array: Array = None
         
@@ -17,44 +20,55 @@ class TeleopHandler:
             self._initialise_socket_connection()
 
     def _initialise_socket_connection(self):
+        """
+        Initialise a socket connection to accept teleoperation from remote server
+        """
         from manipulation_lab.scripts.utils.socket_listener import start_socket_listener
+        logger.info(f"Initialising remote connection")
 
         # Initialise a shared array between the main process and the socket listener (threaded)
-        self.action_array = Array('f', [0.0] * 6)
+        self.action_array = Array('f', [0.0] * 7)
         self.thread = start_socket_listener(self.action_array)
 
     def _get_action(self):
         if self.remote_connection and self.action_array is not None:
             action = list(self.action_array)
         else: 
-            action = [0.0] * 6
+            action = [0.0] * 7
 
         return torch.tensor(action, dtype=torch.float32)
 
-    def run_teleop(self, simulation_app, env_cfg, task):
-        env = DirectRLEnv(cfg=env_cfg)
+    def run_teleop(self, simulation_app):
+        self.action_handler = ActionHandler(env=self.env, control_mode="delta_cartesian")
 
-        self.sim = env.unwrapped.sim
-        self.scene = env.unwrapped.scene
+        sim_dt = self.sim.get_physics_dt()
 
-        # Allow the simulation to warm up
-        settle_steps = int(5.0 / self.sim.get_physics_dt())
-        for _ in range(settle_steps):
-            self.sim.step()
-            sim_dt = self.sim.get_physics_dt()
-            self.scene.update(sim_dt)
+        target_fps = 30
 
-        self.action_handler = ActionHandler(env=env, control_mode="delta_cartesian")
+        # Compute number of sim steps before capturing observations
+        # Round to account for floating point precision errors in sim_dt
+        capture_frequency = round(1.0 / target_fps / sim_dt)
+
+        logger.info(f"Recording at {target_fps} FPS, which is every {capture_frequency} sim steps. (sim_dt={sim_dt:.4f}s)")
+
+        sim_steps = 0
 
         while simulation_app.is_running():
-            # Step the simulation
+            sim_steps += 1
+
+            # Record observations at target FPS
+            if sim_steps % capture_frequency == 0:
+                pass
+
+            # Get the teleoperation action
             action = self._get_action()
-            print(f"Action: {action}")
+
+            # Apply the teleoperation action to the robot
+            self.action_handler.apply(action=action)
+
+            # Step the simulation
+            self.sim.step()
 
             # Update buffers to reflect new sim state
-            sim_dt = self.sim.get_physics_dt()
             self.scene.update(sim_dt)
-
-            self.action_handler.apply(action=action)
-            self.sim.step()
         

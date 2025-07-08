@@ -1,3 +1,7 @@
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("ManipulationLab")
+
 import argparse
 import sys
 from isaaclab.app import AppLauncher
@@ -23,12 +27,12 @@ simulation_app = app_launcher.app
 import manipulation_lab.scripts.utils._validation_patch
 import manipulation_lab.scripts.utils._resolve_names_patch
 
+# Hydra imports
 import hydra
 from omegaconf import DictConfig, OmegaConf
-from isaaclab_tasks.utils import parse_env_cfg
 from hydra.utils import instantiate
-import types
 
+# Internal imports
 from manipulation_lab.scripts.utils.runner import TaskRunner
 from manipulation_lab.scripts.utils.teleop_handler import TeleopHandler
 
@@ -38,18 +42,27 @@ def main(cfg: DictConfig):
     cfg.num_envs = args_cli.num_envs
     cfg.device = args_cli.device
 
-    env_cfg = instantiate(cfg.task)
+    # Create the environment from Hydra config
+    env = instantiate(cfg.task)
+
+    sim = env.unwrapped.sim
+    scene = env.unwrapped.scene
+
+    # Allow the simulation to warm up
+    settle_steps = int(3.0 / sim.get_physics_dt())
+    logger.info(f"Warming up the simulator ...")
+    for _ in range(settle_steps):
+        sim.step()
+        sim_dt = sim.get_physics_dt()
+        scene.update(sim_dt)
+    logger.info(f"Simulator warm")
 
     if not cfg.teleop:
-        runner = TaskRunner(cfg)
-        runner.run(simulation_app=simulation_app, 
-                env_cfg=env_cfg,
-                task=args_cli.task)
+        runner = TaskRunner(cfg, env)
+        runner.run(simulation_app=simulation_app)
     else:
-        teleop_handler = TeleopHandler()
-        teleop_handler.run_teleop(simulation_app=simulation_app,
-        env_cfg=env_cfg,
-        task=args_cli.task)
+        teleop_handler = TeleopHandler(env)
+        teleop_handler.run_teleop(simulation_app=simulation_app)
 
 if __name__ == "__main__":
     main()
