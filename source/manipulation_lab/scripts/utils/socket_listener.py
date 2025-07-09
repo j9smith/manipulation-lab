@@ -8,7 +8,7 @@ import socket
 from multiprocessing import Array
 import threading
 
-def start_socket_listener(action_array: Array, port: int = 8888):
+def start_socket_listener(controller_array: Array, port: int = 8888, expected_dims: int = 11):
     def _listener():
         # Initialise socket
         s = socket.socket()
@@ -40,16 +40,16 @@ def start_socket_listener(action_array: Array, port: int = 8888):
                 msg = line.decode().strip()
                 try:
                     parts = list(map(float, msg.split(',')))
-                    if len(parts) == 7:
+                    if len(parts) == expected_dims:
                         for idx, value in enumerate(parts):
-                            action_array[idx] = value
+                            controller_array[idx] = value
                     else: 
-                        print(f"Received message with unexpected dimensions: {len(parts)}")
+                        logger.warning(f"Received message with unexpected dimensions: {len(parts)}")
                 except Exception as e:
-                    print(f"Failed parsing message: {e}")
+                    logger.warning(f"Failed parsing message: {e}")
 
     # Start thread to execute _listener()
-    print("Starting socket listener")
+    logger.info("Starting socket listener")
     thread = threading.Thread(target=_listener, daemon=True)
     thread.start()
 
