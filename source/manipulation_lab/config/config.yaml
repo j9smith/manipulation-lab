@@ -1,8 +1,25 @@
+# DEFAULTS
 defaults:
   - robot: franka
   - task: tabletop/blocks
   - sim: sim
+  - dataset_writer: dataset_writer
+  - controller: controller
   - _self_
+
 num_envs: 1
-teleop: false
+teleop: true
 device: cuda
+
+# Set dataset writer config for teleoperation
+dataset_writer:
+  save_dir: "/home/ubuntu/Projects/manipulation_lab/datasets/"
+  target_fps: 30
+  compression: "gzip"
+  buffer_size: 25
+
+# Set control config for teleoperation
+controller:
+  remote_connection: true
+  port: 8888
+  controller: "xbox"

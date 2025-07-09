@@ -1,5 +1,4 @@
 import logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ManipulationLab")
 
 import argparse
@@ -51,7 +50,7 @@ def main(cfg: DictConfig):
     scene = env.unwrapped.scene
 
     # Allow the simulation to warm up
-    settle_steps = int(3.0 / sim.get_physics_dt())
+    settle_steps = int(1.5 / sim.get_physics_dt())
     logger.info(f"Warming up the simulator ...")
     for _ in range(settle_steps):
         sim.step()
@@ -63,7 +62,7 @@ def main(cfg: DictConfig):
         runner = TaskRunner(cfg, env)
         runner.run(simulation_app=simulation_app)
     else:
-        teleop_handler = TeleopHandler(env)
+        teleop_handler = TeleopHandler(env, cfg)
         teleop_handler.run_teleop(simulation_app=simulation_app)
 
 if __name__ == "__main__":
