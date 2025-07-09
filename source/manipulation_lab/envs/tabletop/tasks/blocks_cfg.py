@@ -33,27 +33,28 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
 
     robot: ArticulationCfg = MISSING
 
-    scene_camera: CameraCfg = CameraCfg(
-        prim_path="{ENV_REGEX_NS}/SceneCamera",
-        offset=CameraCfg.OffsetCfg(pos=(1.1, 0.0, 0.8), 
-                                   rot=(0.0, -0.25, 0.0, 0.97), 
-                                   convention="world"),
-        debug_vis=True,
-        data_types=["rgb", "depth"],
-        spawn=sim_utils.PinholeCameraCfg(
-            focal_length=10.0, 
-            focus_distance=400.0, 
-            horizontal_aperture=20.955, 
-            clipping_range=(0.1, 1.0e5)),
-        width=100,
-        height=100
-    )
+    # scene_camera: CameraCfg = CameraCfg(
+    #     prim_path="{ENV_REGEX_NS}/SceneCamera",
+    #     offset=CameraCfg.OffsetCfg(pos=(1.1, 0.0, 0.8), 
+    #                                rot=(0.0, -0.25, 0.0, 0.97), 
+    #                                convention="world"),
+    #     debug_vis=True,
+    #     data_types=["rgb", "depth"],
+    #     spawn=sim_utils.PinholeCameraCfg(
+    #         focal_length=10.0, 
+    #         focus_distance=400.0, 
+    #         horizontal_aperture=20.955, 
+    #         clipping_range=(0.1, 1.0e5)),
+    #     width=100,
+    #     height=100
+    # )
 
     wrist_camera: CameraCfg = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/panda_hand/WristCamera",
         offset=CameraCfg.OffsetCfg(pos=(0.15, 0.0, -0.049), # x = vertical, y = horizontal, z = forwards(+)/backwards(-)
                                    rot=(0.0, math.cos(math.pi/4), 0.0, math.cos(math.pi/4)), 
                                    convention="world"),
+        data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=5.0, 
             focus_distance=400.0, 
@@ -68,6 +69,7 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
         offset=CameraCfg.OffsetCfg(pos=(0.0, 0.6, 0.6),
                                    rot=(0.88, 0.15, 0.20, -0.41), 
                                    convention="world"),
+        data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
             focal_length=10.0, 
             focus_distance=400.0, 
@@ -138,3 +140,14 @@ class BlocksEnv(DirectRLEnv):
 
     def _setup_scene(self):
         pass
+
+    def _get_observations(self):
+        return None
+
+    @property
+    def env_name(self):
+        return "tabletop"
+    
+    @property
+    def task_name(self):
+        return "blocks"
