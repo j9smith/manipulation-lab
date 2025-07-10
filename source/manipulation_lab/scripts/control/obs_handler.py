@@ -20,15 +20,17 @@ class ObservationHandler:
         for sensor_name, sensor_obj in self.sensors.items():
             # sensor_obj.data.output is a dictionary of type:tensor, e.g., {'rgb': tensor, 'depth': tensor}
             # Move tensors to CPU then convert to numpy for portability
-            processed_output = {type: tensor.cpu().numpy() for type, tensor in sensor_obj.data.output.items()}
+            # IsaacSim captures observations as (N, ...) where N is number of environments
+            # We squeeze out the environment dimension
+            processed_output = {type: tensor.squeeze(0).cpu().numpy() for type, tensor in sensor_obj.data.output.items()}
             sensor_obs[sensor_name] = processed_output
 
         # sensor_obs is dict: {sensor_name: {type:ndarray}}}
         return sensor_obs
 
     def _get_robot_obs(self):
-        joint_pos = self.robot.data.joint_pos.cpu().numpy()
-        joint_vel = self.robot.data.joint_vel.cpu().numpy()
+        joint_pos = self.robot.data.joint_pos.squeeze(0).cpu().numpy()
+        joint_vel = self.robot.data.joint_vel.squeeze(0).cpu().numpy()
 
         robot_obs = {
             "joint_pos": joint_pos,
