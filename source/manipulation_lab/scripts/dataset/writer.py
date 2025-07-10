@@ -138,14 +138,15 @@ class DatasetWriter:
         if not self.episode_started:
             return
 
+        # Append data to buffer
         self.episode_data_buffer["observations"].append(obs) # List[dict]
         self.episode_data_buffer["actions"].append(action) # List[dict]
         self.episode_data_buffer["is_first"].append(is_first) # List[bool]
         self.episode_data_buffer["is_last"].append(is_last) # List[bool]
         self.episode_data_buffer["sim_time"].append(sim_steps * self.sim_dt) # List[float]
 
+        # Flush buffer to disk if it's full
         if len(self.episode_data_buffer["actions"]) >= self.buffer_size:
-            logger.info("Flushing buffer to disk.")
             self._flush_buffer_to_disk()
 
     def _flush_buffer_to_disk(self):
@@ -234,9 +235,8 @@ class DatasetWriter:
                     # Collect the data across all frames and stack it
                     stacked_values = np.stack([obs[key] for obs in obs_list])
 
-                    # Convert RGB images to uint8 (compression)
                     if key.lower() == "rgb" and self.rgb_as_uint8:
-                        stacked_values = stacked_values.astype(np.uint8)
+                            stacked_values = stacked_values.astype(np.uint8)
 
                     # Write the stacked data to the parent group
                     if key not in parent_group:

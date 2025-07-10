@@ -8,10 +8,6 @@ from manipulation_lab.scripts.control.obs_handler import ObservationHandler
 from manipulation_lab.scripts.dataset.writer import DatasetWriter
 from manipulation_lab.scripts.teleop.controller_interface import ControllerInterface
 
-from isaaclab.scene import InteractiveScene
-
-import time
-
 class TeleopHandler:
     def __init__(self, env, cfg):
         self.env = env
@@ -63,6 +59,7 @@ class TeleopHandler:
 
             def _reset_scene():
                 # TODO: Write scene reset logic
+                # FIXME: env.reset() does not work
                 pass
 
             def _continue_episode():
