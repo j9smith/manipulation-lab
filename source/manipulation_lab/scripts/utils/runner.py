@@ -1,8 +1,5 @@
-from manipulation_lab.scripts.utils.action_handler import ActionHandler
-from manipulation_lab.scripts.utils.obs_handler import ObservationHandler
-
-import gymnasium as gym
-from typing import Any
+from manipulation_lab.scripts.control.action_handler import ActionHandler
+from manipulation_lab.scripts.control.obs_handler import ObservationHandler
 
 import torch
 
@@ -32,4 +29,3 @@ class TaskRunner:
             self.obs_handler.get_obs()
             action_tensor = torch.tensor([[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]], device="cuda")
             self.action_handler.apply(action=action_tensor)
-            break

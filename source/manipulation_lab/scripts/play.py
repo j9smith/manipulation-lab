@@ -23,8 +23,8 @@ app_launcher = AppLauncher(args_cli)
 simulation_app = app_launcher.app
 
 # Patch IsaacLab functions to avoid errors with Hydra
-import manipulation_lab.scripts.utils._validation_patch
-import manipulation_lab.scripts.utils._resolve_names_patch
+import manipulation_lab.scripts.patch._validation_patch
+import manipulation_lab.scripts.patch._resolve_names_patch
 logger.info("Patched string_utils.resolve_matching_names_values with manipulation_lab.scripts.utils._resolve_names_patch._patched_resolve_names_values")
 logger.info("Patched configclass._validate with manipulation_lab.scripts.utils._validation_patch._patched_validate")
 
@@ -35,7 +35,7 @@ from hydra.utils import instantiate
 
 # Internal imports
 from manipulation_lab.scripts.utils.runner import TaskRunner
-from manipulation_lab.scripts.utils.teleop_handler import TeleopHandler
+from manipulation_lab.scripts.teleop.teleop_handler import TeleopHandler
 
 @hydra.main(config_path="../config", config_name="config", version_base=None)
 def main(cfg: DictConfig):

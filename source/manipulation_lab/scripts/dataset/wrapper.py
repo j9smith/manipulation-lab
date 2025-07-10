@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset
 from typing import List, Optional, Callable
-from manipulation_lab.scripts.utils.dataset_reader import DatasetReader
+from manipulation_lab.scripts.dataset.reader import DatasetReader
 
 class DatasetWrapper(Dataset):
     """

@@ -35,7 +35,7 @@ class ControllerInterface:
         """
         Initialise a socket connection to accept teleoperation from remote server
         """
-        from manipulation_lab.scripts.utils.socket_listener import start_socket_listener
+        from manipulation_lab.scripts.teleop.socket_listener import start_socket_listener
         logger.info(f"Initialising remote connection")
         expected_dims = self.expected_action_dims + self.expected_command_dims
         # Initialise a shared array between the main process and the socket listener (threaded)

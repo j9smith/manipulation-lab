@@ -3,10 +3,10 @@
 import logging
 logger = logging.getLogger("ManipulationLab.TeleopHandler")
 
-from manipulation_lab.scripts.utils.action_handler import ActionHandler
-from manipulation_lab.scripts.utils.obs_handler import ObservationHandler
-from manipulation_lab.scripts.utils.dataset_writer import DatasetWriter
-from manipulation_lab.scripts.utils.controller_interface import ControllerInterface
+from manipulation_lab.scripts.control.action_handler import ActionHandler
+from manipulation_lab.scripts.control.obs_handler import ObservationHandler
+from manipulation_lab.scripts.dataset.writer import DatasetWriter
+from manipulation_lab.scripts.teleop.controller_interface import ControllerInterface
 
 from isaaclab.scene import InteractiveScene
 
