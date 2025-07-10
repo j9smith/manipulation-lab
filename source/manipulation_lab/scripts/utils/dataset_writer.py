@@ -15,9 +15,17 @@ import numpy as np
 import torch
 
 class DatasetWriter:
-    def __init__(self, env_name: str, task_name: str, sim_dt: float, 
-                 buffer_size: int = 50, save_dir: str = "./datasets", 
-                 compression: str = "gzip", rgb_as_uint8: bool = True, **kwargs):
+    def __init__(
+        self, 
+        env_name: str, 
+        task_name: str, 
+        sim_dt: float, 
+        buffer_size: int = 50, 
+        save_dir: str = "./datasets", 
+        compression: str = "gzip", 
+        rgb_as_uint8: bool = True,
+        **kwargs
+        ):
 
         # Metadata
         self.base_dir = Path(save_dir) / env_name / task_name
@@ -69,8 +77,10 @@ class DatasetWriter:
         """
         Retrieves the next available episode ID.
         """
-        existing_episodes = sorted(self.base_dir.glob("episode_*.h5"))
-        return f"{len(existing_episodes):04d}"
+        existing_episodes = sorted(self.base_dir.glob("episode_*.hdf5"))
+        print(str(existing_episodes))
+        existing_ids = [int(episode.stem.split("_")[1]) for episode in existing_episodes]
+        return f"{max(existing_ids, default=-1) + 1:04d}"
 
     def start_episode(self):
         """
@@ -86,8 +96,9 @@ class DatasetWriter:
             return
 
         # Only create a new episode file if the episode is not paused
+        self.episode_id = self._get_next_episode_id()
         self.base_dir.mkdir(parents=True, exist_ok=True)
-        self.episode_file_path = self.base_dir / f"episode_{self._get_next_episode_id()}.hdf5"
+        self.episode_file_path = self.base_dir / f"episode_{self.episode_id}.hdf5"
         logger.info(f"Starting episode. Saving file to {self.episode_file_path}.")
 
     def end_episode(self):
@@ -120,7 +131,7 @@ class DatasetWriter:
             self.episode_file_path.unlink()
         self._reset_episode()
 
-    def append_frame(self, obs: dict, action: torch.Tensor, is_first: bool, is_last: bool, sim_steps: int):
+    def append_frame(self, obs: dict, action: dict, is_first: bool, is_last: bool, sim_steps: int):
         """
         Appends one frame of data to the dataset.
         """
@@ -145,7 +156,7 @@ class DatasetWriter:
         if not self.episode_on_disk:
             self.h5file = h5py.File(str(self.episode_file_path), "w")
 
-            self.h5file.attrs["episode_id"] = self._get_next_episode_id()
+            self.h5file.attrs["episode_id"] = self.episode_id
             self.h5file.attrs["env_name"] = self.env_name
             self.h5file.attrs["task_name"] = self.task_name
             self.h5file.attrs["sim_dt"] = self.sim_dt
@@ -161,9 +172,11 @@ class DatasetWriter:
             )
             self.episode_on_disk = True
 
-        def write_observations(obs_list: list[dict], parent_group: h5py.Group):
+        def write_nested_dict(obs_list: list[dict], parent_group: h5py.Group):
             """
-            Observations is a list of dictionaries (one per frame), so we need to traverse them
+            Writes a nested dictionary to the HDF5 file.
+
+            Data is passed as a list of dictionaries (one per frame), so we need to traverse them
             and write their data to a HDF5 group.
 
             e.g. obs = [
@@ -215,7 +228,7 @@ class DatasetWriter:
                     sub_list = [obs[key] for obs in obs_list]
 
                     # Recurse into the sub-dicts
-                    write_observations(sub_list, sub_group)
+                    write_nested_dict(sub_list, sub_group)
                 else:
                     # If not a dict, then we have reached the observation data
                     # Collect the data across all frames and stack it
@@ -249,28 +262,10 @@ class DatasetWriter:
                         dataset[current_size:] = stacked_values
 
         # Write observations
-        write_observations(self.episode_data_buffer["observations"], self.obs_group)
+        write_nested_dict(self.episode_data_buffer["observations"], self.obs_group)
 
         # Write actions
-        action_data = np.stack(self.episode_data_buffer["actions"])
-        if "action" not in self.action_group:
-            self.action_group.create_dataset(
-                name="action",
-                data=action_data,
-                maxshape=(None, *action_data.shape[1:]),
-                chunks=True,
-                compression=self.compression
-            )
-        else:
-            action_dataset = self.action_group["action"]
-            if isinstance(action_dataset, h5py.Dataset):
-                current_size = action_dataset.shape[0]
-                action_dataset.resize(
-                    (current_size + action_data.shape[0]),
-                    axis=0
-                )
-                action_dataset[current_size:] = action_data
-            else: raise TypeError(f"Action dataset is not a h5py.Dataset")
+        write_nested_dict(self.episode_data_buffer["actions"], self.action_group)
 
         # Write flags
         for flag_name in ["is_first", "is_last"]:
