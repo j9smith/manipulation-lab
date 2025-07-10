@@ -74,6 +74,12 @@ class DatasetWrapper(Dataset):
         """
         return len(self.index)
 
+    def __str__(self):
+        """
+        Returns the structure of an example episode.
+        """
+        return f"Example episode:\n{self.reader.describe_structure()}"
+
     def __getitem__(self, item_idx: int):
         """
         Returns the target frame data at the specified index.
@@ -121,12 +127,14 @@ class DatasetWrapper(Dataset):
         actions = []
         for action_key in self.action_keys:
             action = self._get_nested_data(episode["actions"], action_key)[frame_idx]
-            assert action.ndim == 1, f"Expected action data to be (N,), got {action.shape}"
             action = torch.tensor(action, dtype=torch.float32)
+            if action.ndim == 0:
+                action = action.unsqueeze(0) # Unsqueeze scalars
+            assert action.ndim == 1, f"Expected action data to be (N,), got {action.shape}"
             actions.append(action)
-            
 
-        if self.structured_obs or (self.image_encoder is None and self.proprio_keys and self.sensor_keys):
+        # We can't concat an unprocessed image with proprio/sensor data (dim mismatch)
+        if self.structured_obs or (self.image_encoder is None and (self.proprio_keys or self.sensor_keys)):
             data = {
                 "metadata":{
                     "episode_idx": ep_idx,
@@ -143,9 +151,13 @@ class DatasetWrapper(Dataset):
             return data
 
         else:
-            obs = camera_obs.copy()
+            obs = []
+
+            # Only concat if there is data to concat, otherwise we'll get a dim mismatch
+            if camera_obs: obs += camera_obs
             if proprio_obs: obs += proprio_obs
             if sensor_obs: obs += sensor_obs
+
             obs = torch.cat(obs, dim=-1)
             actions = torch.cat(actions, dim=-1)
             return obs, actions
@@ -170,5 +182,5 @@ class DatasetWrapper(Dataset):
             # Reassign the value of nested_dict to the value of the current key
             nested_dict = nested_dict[key]
 
-        # e.g., return the data present at 'rgb'   
+        # e.g., return the data present at 'rgb'
         return nested_dict
