@@ -37,7 +37,7 @@ from hydra.utils import instantiate
 from manipulation_lab.scripts.utils.runner import TaskRunner
 from manipulation_lab.scripts.teleop.teleop_handler import TeleopHandler
 
-@hydra.main(config_path="../config", config_name="config", version_base=None)
+@hydra.main(config_path="../config/play", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg, resolve=True))
     cfg.num_envs = args_cli.num_envs
