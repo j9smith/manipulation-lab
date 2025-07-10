@@ -68,3 +68,31 @@ class DatasetReader:
             if isinstance(frame_count, h5py.Empty):
                 raise ValueError(f"Frame count not found for episode {episode_idx}.")
             else: return int(frame_count)
+
+    def describe_structure(self, episode_idx: int = 0):
+        """
+        Returns the structure of an example episode dataset.
+        """
+        lines = []
+        episode_path = self.episodes[episode_idx]
+
+        with h5py.File(episode_path, "r") as file:
+            lines.append("Attributes:")
+            for key, value in file.attrs.items():
+                lines.append(f"    {key}: {value}")
+
+            lines.append("\nStructure:")
+            def _visit(name, obj):
+                indent = "    " * name.count("/")
+                if isinstance(obj, h5py.Group):
+                    lines.append(f"{indent}{name}/")
+                elif isinstance(obj, h5py.Dataset):
+                    lines.append(f"{indent}{name}: shape={obj.shape} dtype={obj.dtype}")
+
+            file.visititems(_visit)
+        
+        return "\n".join(lines)
+
+reader = DatasetReader(
+    dataset_dir="/home/ubuntu/Projects/manipulation_lab/datasets/tabletop/blocks/",
+)
