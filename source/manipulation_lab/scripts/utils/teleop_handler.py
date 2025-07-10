@@ -78,7 +78,7 @@ class TeleopHandler:
                     obs = self.obs_handler.get_obs()
                     self.dataset_writer.append_frame(
                         obs=obs,
-                        action=action,
+                        action={"ee_deltas": action[:6], "gripper_deltas": action[6]},
                         is_first=is_first,
                         is_last=is_last,
                         sim_steps=self.sim_steps
