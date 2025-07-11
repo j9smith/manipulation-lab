@@ -1,0 +1,42 @@
+custom_dataset: null
+  #_target_: path.to.custom.dataset.class
+  # ... etc.
+
+dataset:
+  dataset_dir: /home/ubuntu/Projects/manipulation_lab/datasets/tabletop/blocks/
+  camera_keys: null #["sensors/wrist_camera/rgb", "sensors/left_shoulder_camera/rgb"]
+  action_keys: ["ee_deltas", "gripper_deltas"]
+  proprio_keys: ["robot/joint_pos"]
+  sensor_keys: null #["sensors/wrist_camera/depth"]
+  transform: null
+  image_encoder: null
+  structured_obs: false
+
+# Use custom dataloader. _target_ must be a valid torch.DataLoader
+custom_dataloader: null
+  #_target_: path.to.custom.dataloader.class
+  #dataset: _target_ must be a valid torch.Dataset
+  #  _target_: path.to.custom.dataset.class
+  # ... etc.
+
+# Use default dataloader
+dataloader:
+  batch_size: 16
+  shuffle: true
+  num_workers: 0
+
+device: "cuda"
+
+optim:
+  lr: 1e-4
+
+model:
+  _target_: manipulation_lab.models.policies.mlp.MLP
+  input_dim: null
+  output_dim: 7
+
+train:
+  save_dir: /home/ubuntu/Projects/manipulation_lab/outputs/
+  save_name: test_model
+
+epochs: 10
