@@ -1,28 +1,20 @@
 import logging
 logger = logging.getLogger("ManipulationLab")
 
-import argparse
-import sys
+# Launch the simulation app
 from isaaclab.app import AppLauncher
+launch_cfg = {
+    "headless": False,
+    "enable_cameras": True,
+    "num_envs": 1,
+    "device": "cuda",
+}
 
-parser = argparse.ArgumentParser(description="Experiment 2")
-parser.add_argument("--task", type=str, default="Isaac-Blocks-v0")
-parser.add_argument("--num_envs", type=int, default=1)
-parser.add_argument("--disable_fabric", action="store_true")
-parser.add_argument("--teleop", action="store_true", default=False)
-
-AppLauncher.add_app_launcher_args(parser)
-args_cli = parser.parse_args()
-args_cli.enable_cameras = True
-
-# Remove unknown args to avoid Hydra conflicts
-args, unknown = parser.parse_known_args()
-sys.argv = [sys.argv[0]] + unknown
-
-app_launcher = AppLauncher(args_cli)
+app_launcher = AppLauncher(launcher_args=launch_cfg)
 simulation_app = app_launcher.app
 
 # Patch IsaacLab functions to avoid errors with Hydra
+# Must execute after app launch
 import manipulation_lab.scripts.patch._validation_patch
 import manipulation_lab.scripts.patch._resolve_names_patch
 logger.info("Patched string_utils.resolve_matching_names_values with manipulation_lab.scripts.utils._resolve_names_patch._patched_resolve_names_values")
@@ -40,9 +32,6 @@ from manipulation_lab.scripts.teleop.teleop_handler import TeleopHandler
 @hydra.main(config_path="../config/play", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     print(OmegaConf.to_yaml(cfg, resolve=True))
-    cfg.num_envs = args_cli.num_envs
-    cfg.device = args_cli.device
-
     # Create the environment from Hydra config
     env = instantiate(cfg.task)
 
