@@ -8,8 +8,28 @@ defaults:
   - _self_
 
 num_envs: 1
-teleop: true
 device: cuda
+launcher:
+  num_envs: 1
+  device: cuda
+  enable_cameras: true
+
+teleop: false
+
+brain:
+  control_frequency: 10
+  device: cuda
+  model_weights: "/home/ubuntu/Projects/manipulation_lab/outputs/test_model.pth"
+  model:
+    _target_: manipulation_lab.models.policies.mlp.MLP
+    input_dim: 9
+    output_dim: 7
+  encoder: null
+  encoder_weights: null
+  camera_keys: null
+  proprio_keys: ["robot/joint_pos"]
+  sensor_keys: null
+
 
 # Set dataset writer config for teleoperation
 dataset_writer:
