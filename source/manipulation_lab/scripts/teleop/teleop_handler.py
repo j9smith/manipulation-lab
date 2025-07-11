@@ -7,6 +7,7 @@ from manipulation_lab.scripts.control.action_handler import ActionHandler
 from manipulation_lab.scripts.control.obs_handler import ObservationHandler
 from manipulation_lab.scripts.dataset.writer import DatasetWriter
 from manipulation_lab.scripts.teleop.controller_interface import ControllerInterface
+import time
 
 class TeleopHandler:
     def __init__(self, env, cfg):
@@ -38,7 +39,10 @@ class TeleopHandler:
         # Round to account for floating point precision errors in sim_dt
         capture_frequency = round(1.0 / self.target_fps / sim_dt)
 
-        logger.info(f"Recording at {self.target_fps} FPS, which is every {capture_frequency} sim steps. (sim_dt={sim_dt:.4f}s)")
+        logger.info(
+            f"Recording at {self.target_fps} FPS, which is every {capture_frequency} sim steps. "
+            f"(sim_dt={sim_dt:.4f}s)"
+            )
 
         while simulation_app.is_running():
             episode_command = self.controller.get_episode_commands()
@@ -50,11 +54,14 @@ class TeleopHandler:
                     _continue_episode()
                 elif episode_command == "pause":
                     self.dataset_writer.pause_episode()
+                    time.sleep(0.5)
                 elif episode_command == "abort":
                     self.dataset_writer.abort_episode()
+                    time.sleep(0.5)
                     _reset_scene()
                 elif episode_command == "finish":
                     self.dataset_writer.end_episode()
+                    time.sleep(0.5)
                     _reset_scene()
 
             def _reset_scene():
