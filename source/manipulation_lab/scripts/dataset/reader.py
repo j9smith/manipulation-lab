@@ -25,49 +25,61 @@ class DatasetReader:
         Loads and returns the target episode in dictionary format.
         """
         episode_path = self.episodes[episode_idx]
-        logger.info(f"Loading episode {episode_idx}: {episode_path.name}")
+        logger.debug(f"Loading episode {episode_idx}: {episode_path.name}")
 
-        with h5py.File(episode_path, "r") as file:
-            episode = {}
+        # FIXME: Throws an error if the episode is malformed, breaks training
+        # Ideally deal with this without having to cancel training
+        try:
+            with h5py.File(episode_path, "r") as file:
+                episode = {}
 
-            def read_group(group: h5py.Group | h5py.Dataset | h5py.Datatype):
-                if isinstance(group, h5py.Dataset):
-                    return group[:]
-                elif isinstance(group, h5py.Datatype):
-                    logger.warning(f"Encountered unexpected type {type(group)} for key {group.name}.")
-                    return
+                def read_group(group: h5py.Group | h5py.Dataset | h5py.Datatype):
+                    if isinstance(group, h5py.Dataset):
+                        return group[:]
+                    elif isinstance(group, h5py.Datatype):
+                        logger.warning(f"Encountered unexpected type {type(group)} for key {group.name}.")
+                        return
 
-                result = {}
-                # Iterate over all keys in group
-                for key in group.keys():
-                    value = group[key]
-                    # If the data is another group, recurse
-                    if isinstance(value, h5py.Group):
-                        result[key] = read_group(value)
-                    # Otherwise, if it's a dataset, read it
-                    elif isinstance(value, h5py.Dataset):
-                        result[key] = value[:]
-                    else:
-                        raise ValueError(f"Unknown type {type(value)} for group {group.name} and key {key}.")
-                return result
+                    result = {}
+                    # Iterate over all keys in group
+                    for key in group.keys():
+                        value = group[key]
+                        # If the data is another group, recurse
+                        if isinstance(value, h5py.Group):
+                            result[key] = read_group(value)
+                        # Otherwise, if it's a dataset, read it
+                        elif isinstance(value, h5py.Dataset):
+                            result[key] = value[:]
+                        else:
+                            raise ValueError(f"Unknown type {type(value)} for group {group.name} and key {key}.")
+                    return result
 
-            episode["observations"] = read_group(file["observations"])
-            episode["actions"] = read_group(file["actions"])
-            episode["flags"] = read_group(file["flags"])
-            episode["sim_time"] = read_group(file["sim_time"])
+                episode["observations"] = read_group(file["observations"])
+                episode["actions"] = read_group(file["actions"])
+                episode["flags"] = read_group(file["flags"])
+                episode["sim_time"] = read_group(file["sim_time"])
 
-            return episode
+                return episode
+        except Exception as e:
+            import sys
+            logger.critical(f"Failed to load episode {episode_idx}: {e}")
+            sys.exit(1)
     
     def get_frame_count(self, episode_idx: int):
         """
         Returns the number of frames in the target episode.
         """
         episode_path = self.episodes[episode_idx]
-        with h5py.File(episode_path, "r") as file:
-            frame_count = file.attrs["frame_count"]
-            if isinstance(frame_count, h5py.Empty):
-                raise ValueError(f"Frame count not found for episode {episode_idx}.")
-            else: return int(frame_count)
+        try:
+            with h5py.File(episode_path, "r") as file:
+                frame_count = file.attrs["frame_count"]
+                if isinstance(frame_count, h5py.Empty):
+                    raise ValueError(f"Frame count not found for episode {episode_path.name}.")
+                else: return int(frame_count)
+        except Exception as e:
+            import sys
+            logger.critical(f"Failed to get frame count for episode {episode_path.name}: {e}")
+            sys.exit(1)
 
     def describe_structure(self, episode_idx: int = 0):
         """
@@ -92,7 +104,3 @@ class DatasetReader:
             file.visititems(_visit)
         
         return "\n".join(lines)
-
-reader = DatasetReader(
-    dataset_dir="/home/ubuntu/Projects/manipulation_lab/datasets/tabletop/blocks/",
-)
