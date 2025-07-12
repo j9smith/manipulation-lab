@@ -7,6 +7,7 @@ from manipulation_lab.scripts.control.action_handler import ActionHandler
 from manipulation_lab.scripts.control.obs_handler import ObservationHandler
 from manipulation_lab.scripts.dataset.writer import DatasetWriter
 from manipulation_lab.scripts.teleop.controller_interface import ControllerInterface
+from isaacsim.core.utils.stage import create_new_stage
 import time
 
 class TeleopHandler:
@@ -15,6 +16,7 @@ class TeleopHandler:
         self.sim = self.env.unwrapped.sim
         self.scene = self.env.unwrapped.scene
         self.sim_steps = 0
+        self.sim_dt = self.sim.get_physics_dt()
         self.cfg = cfg
 
         self.teleop_controller = ControllerInterface(**cfg.teleop_controller)
@@ -65,9 +67,30 @@ class TeleopHandler:
                     _reset_scene()
 
             def _reset_scene():
-                # TODO: Write scene reset logic
-                # FIXME: env.reset() does not work
-                pass
+                logger.info("Resetting scene ...")
+                # Close the environment and reset the stage
+                # TODO: Unsure if env.close() does anything, maybe remove?
+                self.env.close()
+                create_new_stage()
+
+                # TODO: Pull this logic out into a separate helper function
+                # We use the same logic in play.py, and will probably need it elsewhere
+                from hydra.utils import instantiate
+                self.env = instantiate(self.cfg.task)
+                self.sim = self.env.unwrapped.sim
+                self.scene = self.env.unwrapped.scene
+
+                settle_steps = int(1.5 / self.sim_dt)
+                for _ in range(settle_steps):
+                    self.sim.step()
+                    self.scene.update(self.sim_dt)
+                ########################################
+
+                # Reinitialise the action and observation handlers with new environment
+                self.action_handler = ActionHandler(env=self.env, control_mode="delta_cartesian")
+                self.obs_handler = ObservationHandler(env=self.env)
+
+                logger.info("Scene reset.")
 
             def _continue_episode():
                 self.sim_steps += 1
