@@ -14,9 +14,8 @@ launcher:
   device: cuda
   enable_cameras: true
 
-teleop: false
-
-brain:
+# Controller config for policy deployment
+controller:
   control_frequency: 10
   device: cuda
   model_weights: "/home/ubuntu/Projects/manipulation_lab/outputs/test_model.pth"
@@ -30,16 +29,18 @@ brain:
   proprio_keys: ["robot/joint_pos"]
   sensor_keys: null
 
+# Launch the launcher in teleop mode
+teleop: false
 
-# Set dataset writer config for teleoperation
+# Dataset writer config for teleoperation
 dataset_writer:
   save_dir: "/home/ubuntu/Projects/manipulation_lab/datasets/"
   target_fps: 30
   compression: "gzip"
   buffer_size: 25
 
-# Set control config for teleoperation
-controller:
+# Controller config for teleoperation
+teleop_controller:
   remote_connection: true
   port: 8888
   controller: "xbox"

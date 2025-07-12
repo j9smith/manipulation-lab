@@ -17,7 +17,7 @@ class TeleopHandler:
         self.sim_steps = 0
         self.cfg = cfg
 
-        self.controller = ControllerInterface(**cfg.controller)
+        self.teleop_controller = ControllerInterface(**cfg.teleop_controller)
         self.action_handler = ActionHandler(env=self.env, control_mode="delta_cartesian")
         self.obs_handler = ObservationHandler(env=self.env)
         self.dataset_writer = DatasetWriter(
@@ -45,7 +45,7 @@ class TeleopHandler:
             )
 
         while simulation_app.is_running():
-            episode_command = self.controller.get_episode_commands()
+            episode_command = self.teleop_controller.get_episode_commands()
             if episode_command is None and self.dataset_writer.episode_started:
                 _continue_episode()
             else:
@@ -73,7 +73,7 @@ class TeleopHandler:
                 self.sim_steps += 1
 
                 # Get the teleoperated action
-                action = self.controller.get_action()
+                action = self.teleop_controller.get_action()
 
                 # Record observations at target FPS
                 if self.sim_steps % capture_frequency == 0:

@@ -4,7 +4,7 @@ logger = logging.getLogger("ManipulationLab.TaskRunner")
 from hydra.utils import instantiate
 from manipulation_lab.scripts.control.action_handler import ActionHandler
 from manipulation_lab.scripts.control.obs_handler import ObservationHandler
-from manipulation_lab.scripts.brain.brain import Brain
+from manipulation_lab.scripts.control.controller import Controller
 import torch
 
 from threading import Event
@@ -29,46 +29,46 @@ class TaskRunner:
         # Models
         self.model = None
         self.encoder = None
-        self.brain = self._load_brain()
+        self.controller = self._load_controller()
 
         self.step_count = 0
 
-    def _load_brain(self):
+    def _load_controller(self):
         """
-        Initialises the models and the brain.
+        Initialises the models and the controller.
         """
-        device = self.cfg.brain.device
-        logger.info("Loading brain ...")
-        logger.info(f"Loading model weights from {self.cfg.brain.model_weights}")
+        device = self.cfg.controller.device
+        logger.info("Loading controller ...")
+        logger.info(f"Loading model weights from {self.cfg.controller.model_weights}")
 
         # Load policy model with defined weights
-        self.model = instantiate(self.cfg.brain.model)
+        self.model = instantiate(self.cfg.controller.model)
         self.model.load_state_dict(
-            torch.load(self.cfg.brain.model_weights, map_location=device, weights_only=True)
+            torch.load(self.cfg.controller.model_weights, map_location=device, weights_only=True)
         )
         self.model.to(device).eval()
 
         # Load image encoder if defined
-        if self.cfg.brain.encoder is not None:
-            logger.info(f"Loading encoder weights from {self.cfg.brain.encoder_weights}")
-            self.encoder = instantiate(self.cfg.brain.encoder)
+        if self.cfg.controller.encoder is not None:
+            logger.info(f"Loading encoder weights from {self.cfg.controller.encoder_weights}")
+            self.encoder = instantiate(self.cfg.controller.encoder)
             self.encoder.load_state_dict(
-                torch.load(self.cfg.brain.encoder_weights, map_location=device, weights_only=True)
+                torch.load(self.cfg.controller.encoder_weights, map_location=device, weights_only=True)
             )
             self.encoder.to(device).eval()
         else:
             self.encoder = None
 
-        # Initialise brain
-        return Brain(
+        # Initialise controller
+        return Controller(
             cfg=self.cfg,
             model=self.model,
-            control_freq=self.cfg.brain.control_frequency,
+            control_freq=self.cfg.controller.control_frequency,
             control_event=self.control_event,
             sim_dt=self.sim_dt,
-            camera_keys=self.cfg.brain.camera_keys,
-            proprio_keys=self.cfg.brain.proprio_keys,
-            sensor_keys=self.cfg.brain.sensor_keys,
+            camera_keys=self.cfg.controller.camera_keys,
+            proprio_keys=self.cfg.controller.proprio_keys,
+            sensor_keys=self.cfg.controller.sensor_keys,
             encoder=self.encoder,
         )
 
@@ -76,14 +76,14 @@ class TaskRunner:
         """
         Runs the simulation loop.
         """
-        self.brain.start()
+        self.controller.start()
 
         while simulation_app.is_running():
             # Step simulator and update sim time
             self.sim.step()
             self.step_count += 1
             sim_time = self.step_count * self.sim_dt
-            self.brain.sim_time = sim_time
+            self.controller.sim_time = sim_time
 
             # Inform the control loop that the sim has stepped
             self.control_event.set()
@@ -92,11 +92,11 @@ class TaskRunner:
             # Update buffers to reflect new sim state
             self.scene.update(self.sim_dt)
 
-            # Get observations and push to brain
+            # Get observations and push to controller
             obs = self.obs_handler.get_obs()
-            self.brain.update_obs(obs)
+            self.controller.update_obs(obs)
             
-            # Check for new actions from brain
-            action = self.brain.get_action()
+            # Check for new actions from controller
+            action = self.controller.get_action()
             if action is not None:
                 self.action_handler.apply(action=action)

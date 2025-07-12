@@ -1,12 +1,12 @@
 import logging
-logger = logging.getLogger("ManipulationLab.Brain")
+logger = logging.getLogger("ManipulationLab.Controller")
 
 import threading
 from typing import List, Optional
 from time import perf_counter
 import torch
 
-class Brain:
+class Controller:
     def __init__(
         self,
         cfg,
@@ -20,7 +20,7 @@ class Brain:
         encoder: Optional[torch.nn.Module] = None,
     ):
         """
-        # TODO: Write Brain init docstring
+        # TODO: Write Controller init docstring
         """
         self.cfg = cfg
         self.control_freq = control_freq
@@ -164,7 +164,7 @@ class Brain:
                 obs.append(value)
 
         # Concatenate all target data into flat tensor
-        obs = torch.cat(obs, dim=-1).to(self.cfg.brain.device)
+        obs = torch.cat(obs, dim=-1).to(self.cfg.controller.device)
 
         # Run the model
         with torch.no_grad():
