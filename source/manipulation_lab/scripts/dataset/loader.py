@@ -3,8 +3,10 @@ logger = logging.getLogger("ManipulationLab.DataLoader")
 
 from manipulation_lab.scripts.dataset.wrapper import DatasetWrapper
 from torch.utils.data import DataLoader
+from typing import Optional
+from torch.nn import Module
 
-def build_dataloader(cfg, split:str = "train"):
+def build_dataloader(cfg, encoder:Optional[Module] = None):
     logger.info("Building DataLoader")
     dataset= DatasetWrapper(
         dataset_dir=cfg.dataset.dataset_dir,
@@ -13,7 +15,7 @@ def build_dataloader(cfg, split:str = "train"):
         proprio_keys=cfg.dataset.get("proprio_keys", None),
         sensor_keys=cfg.dataset.get("sensor_keys", None),
         transform=cfg.dataset.get("transform", None),
-        image_encoder=cfg.dataset.get("image_encoder", None),
+        image_encoder=encoder,
         structured_obs=cfg.dataset.structured_obs
     )
 

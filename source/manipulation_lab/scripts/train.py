@@ -12,10 +12,11 @@ import time
 
 @hydra.main(config_path="../config/train", config_name="config", version_base=None)
 def main(cfg: DictConfig):
+    encoder = instantiate(cfg.dataset.image_encoder) if cfg.dataset.image_encoder is not None else None
     # TODO: Allow custom dataset
     if cfg.custom_dataset is not None: raise NotImplementedError("Custom dataset not implemented")
     if cfg.custom_dataloader is None:
-        dataloader = build_dataloader(cfg, split="train")
+        dataloader = build_dataloader(cfg, encoder=encoder)
     else: dataloader = instantiate(cfg.custom_dataloader)
 
     sample_batch = next(iter(dataloader))
@@ -46,11 +47,12 @@ def main(cfg: DictConfig):
     logger.info(
         f"New training run:\n"
         "======================\n"
-        f"Dataset: {cfg.dataset.dataset_dir}\n"
-        f"Dataloader: {cfg.dataloader.batch_size} | {cfg.dataloader.shuffle} | {cfg.dataloader.num_workers}\n"
-        f"Model: {cfg.model.input_dim} -> {cfg.model.output_dim}\n"
-        f"Optimiser: {cfg.optim.lr}\n"
+        f"Dataset: Dataset dir: {cfg.dataset.dataset_dir}\n"
+        f"Dataloader: Batch size: {cfg.dataloader.batch_size} | Shuffle: {cfg.dataloader.shuffle} | Num workers: {cfg.dataloader.num_workers}\n"
+        f"Model: Input dim: {cfg.model.input_dim} | Output dim: {cfg.model.output_dim}\n"
+        f"Optimiser: Learning rate: {cfg.optim.lr}\n"
         f"Train: {cfg.epochs} epochs\n"
+        f"Saving weights to: {cfg.train.save_dir}/{cfg.train.save_name}.pth\n"
         "======================\n"
     )
 
