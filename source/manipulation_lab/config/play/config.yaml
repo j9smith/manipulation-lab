@@ -38,7 +38,7 @@ dataset_writer:
   save_dir: "/home/ubuntu/Projects/manipulation_lab/datasets/"
   target_fps: 30
   compression: "gzip"
-  buffer_size: 25
+  buffer_size: 10000
 
 # Controller config for teleoperation
 teleop_controller:

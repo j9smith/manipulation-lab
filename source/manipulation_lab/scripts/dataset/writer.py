@@ -20,7 +20,7 @@ class DatasetWriter:
         env_name: str, 
         task_name: str, 
         sim_dt: float, 
-        buffer_size: int = 50, 
+        buffer_size: int = 10000, 
         save_dir: str = "./datasets", 
         compression: str = "gzip", 
         rgb_as_uint8: bool = True,
@@ -78,7 +78,6 @@ class DatasetWriter:
         Retrieves the next available episode ID.
         """
         existing_episodes = sorted(self.base_dir.glob("episode_*.hdf5"))
-        print(str(existing_episodes))
         existing_ids = [int(episode.stem.split("_")[1]) for episode in existing_episodes]
         return f"{max(existing_ids, default=-1) + 1:04d}"
 
@@ -108,7 +107,7 @@ class DatasetWriter:
         if not self.episode_started:
             return
 
-        self.episode_data_buffer["is_last"][-1] = True
+        self.episode_data_buffer["is_last"][-1] = True # FIXME: Index error (-1 out of bounds)
         self._flush_buffer_to_disk()
         self.h5file.attrs["frame_count"] = self.time_dataset.shape[0]
         self.h5file.close()
@@ -147,6 +146,7 @@ class DatasetWriter:
 
         # Flush buffer to disk if it's full
         if len(self.episode_data_buffer["actions"]) >= self.buffer_size:
+            logger.info(f"Flushing buffer to disk")
             self._flush_buffer_to_disk()
 
     def _flush_buffer_to_disk(self):
