@@ -51,14 +51,14 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
 
     wrist_camera: CameraCfg = CameraCfg(
         prim_path="{ENV_REGEX_NS}/Robot/panda_hand/WristCamera",
-        offset=CameraCfg.OffsetCfg(pos=(0.15, 0.0, -0.049), # x = vertical, y = horizontal, z = forwards(+)/backwards(-)
+        offset=CameraCfg.OffsetCfg(pos=(0.15, 0.0, -0.1), # 0.15, 0.0, -0.049# x = vertical, y = horizontal, z = forwards(+)/backwards(-)
                                    rot=(0.0, math.cos(math.pi/4), 0.0, math.cos(math.pi/4)), 
                                    convention="world"),
         data_types=["rgb"],
         spawn=sim_utils.PinholeCameraCfg(
-            focal_length=5.0, 
+            focal_length=5, 
             focus_distance=400.0, 
-            horizontal_aperture=20.955, 
+            horizontal_aperture=10, #20.955, 
             clipping_range=(0.1, 1.0e5)),
         width=256,
         height=256
@@ -138,11 +138,29 @@ class BlocksEnv(DirectRLEnv):
     def __init__(self, cfg: BlocksEnvCfg):
         super().__init__(cfg)
 
+    def _reset_idx(self, env_ids):
+        robot = self.scene.articulations["robot"]
+
+        default_joint_pos = robot.data.default_joint_pos[env_ids]
+        default_joint_vel = robot.data.default_joint_vel[env_ids]
+
+        robot.write_joint_state_to_sim(
+            position=default_joint_pos,
+            velocity=default_joint_vel,
+            env_ids=env_ids
+        )
+
+        for object_name in ["cuboid_red", "cuboid_blue"]:
+            obj = self.scene.rigid_objects[object_name]
+            default_pos = obj.data.default_root_state[env_ids]
+            obj.write_root_state_to_sim(default_pos, env_ids=env_ids)
+
     def _setup_scene(self):
         pass
 
     def _get_observations(self):
         return None
+
 
     @property
     def env_name(self):
