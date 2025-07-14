@@ -60,8 +60,8 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
             focus_distance=400.0, 
             horizontal_aperture=20.955, 
             clipping_range=(0.1, 1.0e5)),
-        width=50,
-        height=50
+        width=256,
+        height=256
     )
 
     left_shoulder_camera: CameraCfg = CameraCfg(
@@ -75,8 +75,8 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
             focus_distance=400.0, 
             horizontal_aperture=20.955, 
             clipping_range=(0.1, 1.0e5)),
-        width=50,
-        height=50
+        width=256,
+        height=256
     )
     
     right_shoulder_camera: CameraCfg = CameraCfg(
@@ -89,8 +89,8 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
             focus_distance=400.0, 
             horizontal_aperture=20.955, 
             clipping_range=(0.1, 1.0e5)),
-        width=50,
-        height=50
+        width=256,
+        height=256
     )
 
     cuboid_red = RigidObjectCfg(
