@@ -4,12 +4,15 @@ custom_dataset: null
 
 dataset:
   dataset_dir: /home/ubuntu/Projects/manipulation_lab/datasets/tabletop/blocks/
-  camera_keys: null #["sensors/wrist_camera/rgb", "sensors/left_shoulder_camera/rgb"]
+  camera_keys: ["sensors/wrist_camera/rgb", "sensors/left_shoulder_camera/rgb"]
   action_keys: ["ee_deltas", "gripper_deltas"]
   proprio_keys: ["robot/joint_pos"]
   sensor_keys: null #["sensors/wrist_camera/depth"]
   transform: null
-  image_encoder: null
+  image_encoder:
+    _target_: manipulation_lab.models.encoders.resnet.ResNet18Encoder
+    pretrained: true
+    device: cuda
   structured_obs: false
 
 # Use custom dataloader. _target_ must be a valid torch.DataLoader

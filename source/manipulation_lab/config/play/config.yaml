@@ -21,11 +21,12 @@ controller:
   model_weights: "/home/ubuntu/Projects/manipulation_lab/outputs/test_model.pth"
   model:
     _target_: manipulation_lab.models.policies.mlp.MLP
-    input_dim: 9
+    input_dim: 1033
     output_dim: 7
-  encoder: null
+  encoder: 
+    _target_: manipulation_lab.models.encoders.resnet.ResNet18Encoder
   encoder_weights: null
-  camera_keys: null
+  camera_keys: ["sensors/wrist_camera/rgb", "sensors/left_shoulder_camera/rgb"]
   proprio_keys: ["robot/joint_pos"]
   sensor_keys: null
 
