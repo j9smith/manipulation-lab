@@ -50,11 +50,8 @@ class TaskRunner:
 
         # Load image encoder if defined
         if self.cfg.controller.encoder is not None:
-            logger.info(f"Loading encoder weights from {self.cfg.controller.encoder_weights}")
             self.encoder = instantiate(self.cfg.controller.encoder)
-            self.encoder.load_state_dict(
-                torch.load(self.cfg.controller.encoder_weights, map_location=device, weights_only=True)
-            )
+
             self.encoder.to(device).eval()
         else:
             self.encoder = None

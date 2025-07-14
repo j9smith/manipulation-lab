@@ -14,9 +14,13 @@ import time
 def main(cfg: DictConfig):
     encoder = instantiate(cfg.dataset.image_encoder) if cfg.dataset.image_encoder is not None else None
     # TODO: Allow custom dataset
-    if cfg.custom_dataset is not None: raise NotImplementedError("Custom dataset not implemented")
+    if cfg.custom_dataset is not None: raise NotImplementedError("Custom dataset not implemented in train.py")
     if cfg.custom_dataloader is None:
-        dataloader = build_dataloader(cfg, encoder=encoder)
+        dataloader = build_dataloader(
+            cfg=cfg, 
+            encoder=encoder, 
+            structured_obs=cfg.dataset.structured_obs
+            )
     else: dataloader = instantiate(cfg.custom_dataloader)
 
     sample_batch = next(iter(dataloader))
@@ -55,7 +59,7 @@ def main(cfg: DictConfig):
         f"Saving weights to: {cfg.train.save_dir}/{cfg.train.save_name}.pth\n"
         "======================\n"
     )
-
+    training_start_time = time.time()
     for epoch in range(cfg.epochs):
         epoch_start_time = time.time()
         for batch in dataloader:
@@ -74,6 +78,8 @@ def main(cfg: DictConfig):
         logger.info(f"Epoch {epoch + 1} / {cfg.epochs} | Loss: {loss.item():.4f} | Time: {epoch_duration:.2f}s")
 
     torch.save(model.state_dict(), f"{cfg.train.save_dir}/{cfg.train.save_name}.pth")
+    logger.info(f"Training completed in {time.time() - training_start_time:.2f}s")
+    logger.info(f"Weights saved to {cfg.train.save_dir}/{cfg.train.save_name}.pth")
 
 if __name__ == "__main__":
     main()

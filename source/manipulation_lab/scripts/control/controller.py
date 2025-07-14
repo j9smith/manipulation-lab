@@ -28,7 +28,10 @@ class Controller:
         self.sim_dt = sim_dt
 
         self.model = model
+        self.model.to(self.cfg.controller.device)
+
         self.encoder = encoder
+        if self.encoder: self.encoder.to(self.cfg.controller.device)
 
         self.camera_keys = camera_keys
         self.proprio_keys = proprio_keys
@@ -149,22 +152,25 @@ class Controller:
         # Process all target data and append to obs list
         if self.encoder is not None:
             for _, value in camera_obs.items():
+                value = torch.tensor(value, dtype=torch.float32).permute(2, 0, 1) / 255.0
+                value = value.to(self.cfg.controller.device)
                 cam_latent_obs = self.encoder(value)
+                if cam_latent_obs.ndim == 2: cam_latent_obs = cam_latent_obs.squeeze(0)
                 obs.append(cam_latent_obs)
 
         if self.proprio_keys:
             for _, value in proprio_obs.items():
-                value = torch.tensor(value)
-                obs.append(value)
+                value = torch.tensor(value).to(self.cfg.controller.device)
+                obs.append(value)   
 
         if self.sensor_keys:
             # TODO: How do we handle multidimensional sensor data?
             for _, value in sensor_obs.items():
-                value = torch.tensor(value)
+                value = torch.tensor(value).to(self.cfg.controller.device)
                 obs.append(value)
 
         # Concatenate all target data into flat tensor
-        obs = torch.cat(obs, dim=-1).to(self.cfg.controller.device)
+        obs = torch.cat(obs, dim=-1)
 
         # Run the model
         with torch.no_grad():

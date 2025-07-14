@@ -53,7 +53,7 @@ class DatasetWrapper(Dataset):
         self.sensor_keys = sensor_keys
         self.transform = transform
         self.image_encoder = image_encoder
-        self.structured_obs = structured_obs
+        self.structured_obs = True # FIXME: Remove this after testing collate_fn
         self.encoder_device = next(self.image_encoder.parameters()).device if self.image_encoder is not None else None
 
         self._episode_cache: dict[int, dict] = {}
@@ -102,16 +102,16 @@ class DatasetWrapper(Dataset):
                 assert img.ndim == 3, f"Expected image to be (C, H, W), got {img.shape}"
 
                 # (H, W, C) -> (C, H, W) and uint8 -> float32
-                img = torch.tensor(img, dtype=torch.float32).permute(2, 0, 1)
+                img = torch.tensor(img, dtype=torch.float32).permute(2, 0, 1) / 255.0
 
-                if self.image_encoder is not None:
-                    # (C, H, W) -> (1, C, H, W)
-                    # Encoder expects batch dimension
-                    img = img.to(self.encoder_device)
-                    img = self.image_encoder(img.unsqueeze(0)).to("cpu")
+                # if self.image_encoder is not None:
+                #     # (C, H, W) -> (1, C, H, W)
+                #     # Encoder expects batch dimension
+                #     img = img.to(self.encoder_device)
+                #     img = self.image_encoder(img.unsqueeze(0)).to("cpu")
 
-                    # (1, D) -> (D,)
-                    img = img.squeeze(0)
+                #     # (1, D) -> (D,)
+                #     img = img.squeeze(0)
 
                 camera_obs.append(img)
 
