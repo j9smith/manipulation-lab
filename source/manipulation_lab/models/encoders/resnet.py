@@ -14,12 +14,15 @@ class ResNet18Encoder(nn.Module):
         device: str = "cuda",
     ):
         super().__init__()
-
         self.device = device
 
+        # Load encoder with pretrained weights
         self.encoder = resnet18(
             weights=ResNet18_Weights.DEFAULT if pretrained else None
             )
+
+        # Remove classification head
+        self.encoder = nn.Sequential(*list(self.encoder.children())[:-1])
 
         self.encoder.eval().to(self.device)
 
@@ -35,7 +38,7 @@ class ResNet18Encoder(nn.Module):
     def forward(self, x):
         x = x.to(self.device)
         if x.ndim == 3:
-            assert x.shape[0] == 1, f"Expected channel dimension to be 3, got {x.shape[0]}"
+            assert x.shape[0] == 3, f"Expected channel dimension to be 3, got {x.shape[0]}"
             x = x.unsqueeze(0)
         assert x.ndim == 4, f"Expected (B, C, H, W), got {x.shape}"
 
@@ -46,6 +49,11 @@ class ResNet18Encoder(nn.Module):
 
         with torch.no_grad():
             x = self.encoder(x)
+        
+        # Removing classifier head means ResNet outputs (B, 512, 1, 1)
+        # We need to flatten the output to (B, 512)
+        x = x.squeeze(-1).squeeze(-1)
+        assert x.ndim == 2, f"Expected (B, 512), got {x.shape}"
 
         return x
 

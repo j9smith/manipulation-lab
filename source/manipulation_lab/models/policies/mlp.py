@@ -9,9 +9,9 @@ class MLP(nn.Module):
         self._output_dim = output_dim
 
         self.network = nn.Sequential(
-            nn.Linear(self._input_dim, 128),
+            nn.Linear(self._input_dim, 256),
             nn.ReLU(),
-            nn.Linear(128, 128),
+            nn.Linear(256, 128),
             nn.ReLU(),
             nn.Linear(128, self._output_dim),
         )
