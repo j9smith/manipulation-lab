@@ -52,6 +52,7 @@ class TeleopHandler:
             else:
                 if episode_command == "start":
                     self.dataset_writer.start_episode()
+                    self.sim_steps = 0
                     _continue_episode()
                 elif episode_command == "pause":
                     self.dataset_writer.pause_episode()
@@ -74,7 +75,6 @@ class TeleopHandler:
                 for _ in range(settle_steps):
                     self.sim.step()
                     self.scene.update(self.sim_dt)
-
                 logger.info("Scene reset.")
 
             def _continue_episode():
