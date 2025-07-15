@@ -82,16 +82,16 @@ class TaskRunner:
             sim_time = self.step_count * self.sim_dt
             self.controller.sim_time = sim_time
 
+            # Get observations and push to controller
+            obs = self.obs_handler.get_obs()
+            self.controller.update_obs(obs)
+
             # Inform the control loop that the sim has stepped
             self.control_event.set()
             self.control_event.clear()
 
             # Update buffers to reflect new sim state
             self.scene.update(self.sim_dt)
-
-            # Get observations and push to controller
-            obs = self.obs_handler.get_obs()
-            self.controller.update_obs(obs)
             
             # Check for new actions from controller
             action = self.controller.get_action()
