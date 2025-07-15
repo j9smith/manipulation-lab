@@ -42,6 +42,7 @@ class Controller:
 
         self._action_buffer = []
         self._action_buffer_lock = threading.Lock()
+        self._last_action = None
 
         self.control_event = control_event
 
@@ -80,8 +81,11 @@ class Controller:
         """
         with self._action_buffer_lock:
             if len(self._action_buffer) > 0:
-                return self._action_buffer.pop(0)
-            else: return None
+                action = self._action_buffer.pop(0)
+                self._last_action = action
+                return action
+            else:
+                return self._last_action
 
     def _get_latest_obs(self):
         """
@@ -97,9 +101,12 @@ class Controller:
         Stores actions in the action buffer. Overwrites any stale actions.
 
         Called by the controller on each control step.
+
+        TODO: Rewrite to maintain action across multiple steps while supporting action chunking.
         """
         with self._action_buffer_lock:
             self._action_buffer = [actions]
+            self._last_action = self._action_buffer[0]
 
     def _schedule_actions(self, actions):
         """
@@ -179,6 +186,12 @@ class Controller:
         inference_latency = perf_counter() - inference_start_time
         logger.debug(f"Inference latency: {inference_latency*100:.2f}ms")
 
+        if inference_latency > self.control_dt:
+            logger.warning(
+                f"Inference latency ({inference_latency*1000:.2f}ms) exceeded "
+                f"control step time ({self.control_dt*1000:.2f}ms)."
+            )
+
         # Send actions (tensor) to the action buffer
         self._push_actions(actions)
 
@@ -196,7 +209,7 @@ class Controller:
 
         while self._running:
             # Wait for the sim to step before checking for control step
-            self.control_event.wait(timeout=self.control_dt)
+            self.control_event.wait()
 
             if self.sim_time >= self._next_control_time:
                 if(self.sim_time - self._next_control_time > drift_tolerance):
