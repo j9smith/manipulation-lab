@@ -126,7 +126,10 @@ class ActionHandler:
                 "Control mode is not set. Please specify a control mode: "
                 "delta_cartesian, absolute_cartesian, or joint_pos_target")
         else:
-            raise ValueError(f"Invalid control mode: {self.control_mode}")
+            raise ValueError(
+                f"Invalid control mode: {self.control_mode}. "
+                f"Valid control modes: delta_cartesian, absolute_cartesian, joint_pos_target"
+            )
 
     def _apply_delta_cartesian(self, action):
         """
