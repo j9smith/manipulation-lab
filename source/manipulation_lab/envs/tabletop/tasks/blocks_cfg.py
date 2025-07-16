@@ -3,6 +3,8 @@ from isaaclab.envs import ManagerBasedRLEnvCfg, ManagerBasedEnvCfg
 import isaaclab.sim as sim_utils
 from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
 from isaaclab.sim import SimulationCfg
+from isaaclab.managers import EventTermCfg, SceneEntityCfg
+import isaaclab.envs.mdp.events as events
 
 from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
 from isaaclab.sim.spawners.lights import DomeLightCfg
@@ -86,7 +88,7 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(),
             collision_props=sim_utils.CollisionPropertiesCfg()
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.15, 0.0, 1.06)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(0.15, 0.0, 0.05)),
     )
 
     cuboid_blue = RigidObjectCfg(
@@ -98,7 +100,56 @@ class BlocksSceneCfg(InteractiveSceneCfg, TableTopSceneCfg):
             physics_material=sim_utils.RigidBodyMaterialCfg(),
             collision_props=sim_utils.CollisionPropertiesCfg()
         ),
-        init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.15, 0.0, 1.06)),
+        init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.15, 0.0, 0.05)),
+    )
+
+def test(env, env_ids):
+    print(f"env ids: {env_ids}")
+
+@configclass
+class BlocksEventCfg:
+    randomise_red_cube_placement = EventTermCfg(
+        func=events.reset_root_state_with_random_orientation,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("cuboid_red"),# SceneEntityCfg("cuboid_blue")],
+            "pose_range": {
+                "x": (-0.2, 0.2),
+                "y": (-0.2, 0.2),
+                "z": (0.0, 0.0)
+            },
+            "velocity_range": {}
+        }
+    )
+
+    randomise_blue_cube_placement = EventTermCfg(
+        func=events.reset_root_state_with_random_orientation,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("cuboid_blue"),
+            "pose_range": {
+                "x": (-0.2, 0.2),
+                "y": (-0.2, 0.2),
+                "z": (0.0, 0.0)
+            },
+            "velocity_range": {}
+        }
+    )
+
+    randomise_robot_pose = EventTermCfg(
+        func=events.reset_joints_by_offset,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
+            "position_range": (-0.1, 0.1),
+            "velocity_range": (0.0, 0.0)
+        }
+    )
+
+    test = EventTermCfg(
+        func=test,
+        mode="reset",
+        params={}
     )
 
 @configclass
@@ -109,6 +160,7 @@ class BlocksEnvCfg(DirectRLEnvCfg):
     sim: SimulationCfg = SimulationCfg()
     decimation: int = 1
     scene: BlocksSceneCfg = BlocksSceneCfg(env_spacing=2.5)
+    events = BlocksEventCfg()
     episode_length_s: int = 60
     observation_space: int = 1
     action_space: int = 1
@@ -121,23 +173,28 @@ class BlocksEnv(DirectRLEnv):
 
     def __init__(self, cfg: BlocksEnvCfg):
         super().__init__(cfg)
+        print("--- Registered reset-mode events: ---")
+        for name, term in self.event_manager.active_terms.items():
+            print(f"AAAAAAAAAAAA\nName: {name}\nTerm: {term}\nAAAAAAAAAAAa")
 
-    def _reset_idx(self, env_ids):
-        robot = self.scene.articulations["robot"]
 
-        default_joint_pos = robot.data.default_joint_pos[env_ids]
-        default_joint_vel = robot.data.default_joint_vel[env_ids]
+    # def _reset_idx(self, env_ids):
+    #     pass
+        # robot = self.scene.articulations["robot"]
 
-        robot.write_joint_state_to_sim(
-            position=default_joint_pos,
-            velocity=default_joint_vel,
-            env_ids=env_ids
-        )
+        # default_joint_pos = robot.data.default_joint_pos[env_ids]
+        # default_joint_vel = robot.data.default_joint_vel[env_ids]
 
-        for object_name in self.scene.rigid_objects.keys():
-            obj = self.scene.rigid_objects[object_name]
-            default_pos = obj.data.default_root_state[env_ids]
-            obj.write_root_state_to_sim(default_pos, env_ids=env_ids)
+        # robot.write_joint_state_to_sim(
+        #     position=default_joint_pos,
+        #     velocity=default_joint_vel,
+        #     env_ids=env_ids
+        # )
+
+        # for object_name in self.scene.rigid_objects.keys():
+        #     obj = self.scene.rigid_objects[object_name]
+        #     default_pos = obj.data.default_root_state[env_ids]
+        #     obj.write_root_state_to_sim(default_pos, env_ids=env_ids)
 
     def _setup_scene(self):
         pass
