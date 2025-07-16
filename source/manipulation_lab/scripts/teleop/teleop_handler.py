@@ -14,6 +14,7 @@ class TeleopHandler:
         self.env = env
         self.sim = self.env.unwrapped.sim
         self.scene = self.env.unwrapped.scene
+        self.robot = self.scene.articulations["robot"]
         self.sim_steps = 0
         self.sim_dt = self.sim.get_physics_dt()
         self.cfg = cfg
@@ -67,9 +68,14 @@ class TeleopHandler:
                     _reset_scene()
 
             def _reset_scene():
+                # TODO: Do some ablations here to find out what we can get rid of
                 logger.info("Resetting scene ...")
                 self.env.reset()
-                self.sim.reset()
+                self.sim.step()
+                self.scene.update(self.sim_dt)
+                self.robot.set_joint_position_target(self.robot.data.joint_pos)
+                self.scene.write_data_to_sim()
+
 
                 settle_steps = int(1.5 / self.sim_dt)
                 for _ in range(settle_steps):
