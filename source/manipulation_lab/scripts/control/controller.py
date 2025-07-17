@@ -29,6 +29,7 @@ class Controller:
 
         self.model = model
         self.model.to(self.cfg.controller.device)
+        self.model_use_structured_obs = True #self.cfg.controller.model_use_structured_obs
 
         self.encoder = encoder
         if self.encoder: self.encoder.to(self.cfg.controller.device)
@@ -43,13 +44,15 @@ class Controller:
         self._action_buffer = []
         self._action_buffer_lock = threading.Lock()
         self._last_action = None
+        self._action_schedule = []
 
         self.control_event = control_event
 
         self.sim_time = 0.0
-        self._step_count = 0
-        self._last_control_time = 0.0
-        self._next_control_time = 1.0 # Allow sim to settle before first control step
+        self.sim_step_count = 0
+        self._last_control_step = 0
+        self._next_control_step = 0 
+        self._steps_per_control = int(round(1.0/(self.sim_dt * self.control_freq)))
         self._running = False
         self._thread = None
 
@@ -81,11 +84,16 @@ class Controller:
         """
         with self._action_buffer_lock:
             if len(self._action_buffer) > 0:
-                action = self._action_buffer.pop(0)
-                self._last_action = action
-                return action
+                if self._action_buffer[0][0] <= self.sim_step_count:
+                    _, action = self._action_buffer.pop(0)
+                    self._last_action = action
+                    return action
+                else: return None
             else:
-                return self._last_action
+                # TODO: If we're trained on ManipLab dataset we need to consider that
+                # actions may need to be applied consistently across control steps
+                # e.g., if trained on 30Hz, we need to apply as if we operated at 60Hz
+                return None 
 
     def _get_latest_obs(self):
         """
@@ -104,16 +112,33 @@ class Controller:
 
         TODO: Rewrite to maintain action across multiple steps while supporting action chunking.
         """
-        with self._action_buffer_lock:
-            self._action_buffer = [actions]
-            self._last_action = self._action_buffer[0]
+        self._schedule_actions(actions)
+            # self._action_buffer = [actions]
+            # self._last_action = self._action_buffer[0]
 
     def _schedule_actions(self, actions):
         """
         Schedules actions across the control step. Allows multiple actions to be scheduled
         across a single control step (e.g., for action chunking transformers).
         """
-        pass
+        actions = actions.unsqueeze(0) if actions.ndim == 1 else actions
+        chunk_size = actions.shape[0]
+
+        # The number of sim steps per control step
+        sim_steps_per_control_step = self._steps_per_control
+        
+        # The number of sim steps to wait between actions
+        sim_steps_per_action = int(sim_steps_per_control_step / chunk_size)
+
+        # The sim step of the first action (i.e., on the next control step)
+        action_step = self._next_control_step
+
+        # Schedule actions evenly across the control step
+        with self._action_buffer_lock:
+            self._action_buffer.clear()
+            for i in range(chunk_size):
+                self._action_buffer.append((action_step, actions[i]))
+                action_step += sim_steps_per_action
 
     def _extract_desired_obs(self, obs: dict):
         """
@@ -156,28 +181,31 @@ class Controller:
 
         obs = []
 
-        # Process all target data and append to obs list
-        if self.encoder is not None:
-            for _, value in camera_obs.items():
-                value = torch.tensor(value, dtype=torch.float32).permute(2, 0, 1) / 255.0
-                value = value.to(self.cfg.controller.device)
-                cam_latent_obs = self.encoder(value)
-                if cam_latent_obs.ndim == 2: cam_latent_obs = cam_latent_obs.squeeze(0)
-                obs.append(cam_latent_obs)
+        if self.model_use_structured_obs == False:
+            # Process all target data and append to obs list
+            if self.encoder is not None:
+                for _, value in camera_obs.items():
+                    value = torch.tensor(value, dtype=torch.float32).permute(2, 0, 1) / 255.0
+                    value = value.to(self.cfg.controller.device)
+                    cam_latent_obs = self.encoder(value)
+                    if cam_latent_obs.ndim == 2: cam_latent_obs = cam_latent_obs.squeeze(0)
+                    obs.append(cam_latent_obs)
 
-        if self.proprio_keys:
-            for _, value in proprio_obs.items():
-                value = torch.tensor(value).to(self.cfg.controller.device)
-                obs.append(value)   
+            if self.proprio_keys:
+                for _, value in proprio_obs.items():
+                    value = torch.tensor(value).to(self.cfg.controller.device)
+                    obs.append(value)   
 
-        if self.sensor_keys:
-            # TODO: How do we handle multidimensional sensor data?
-            for _, value in sensor_obs.items():
-                value = torch.tensor(value).to(self.cfg.controller.device)
-                obs.append(value)
+            if self.sensor_keys:
+                # TODO: How do we handle multidimensional sensor data?
+                for _, value in sensor_obs.items():
+                    value = torch.tensor(value).to(self.cfg.controller.device)
+                    obs.append(value)
 
-        # Concatenate all target data into flat tensor
-        obs = torch.cat(obs, dim=-1)
+            # Concatenate all target data into flat tensor
+            obs = torch.cat(obs, dim=-1)
+
+        else: obs = (camera_obs, proprio_obs, sensor_obs)
 
         # Run the model
         with torch.no_grad():
@@ -204,21 +232,22 @@ class Controller:
         """
         self._running = True
 
-        drift_tolerance = self.sim_dt * 1.5
-        logger.debug(f"Drift tolerance: {drift_tolerance}s")
+        drift_step_tolerance = 1
 
         while self._running:
             # Wait for the sim to step before checking for control step
             self.control_event.wait()
+            self.control_event.clear()
 
-            if self.sim_time >= self._next_control_time:
-                if(self.sim_time - self._next_control_time > drift_tolerance):
+            if self.sim_step_count >= self._next_control_step:
+                if(self.sim_step_count > self._next_control_step + drift_step_tolerance):
                     logger.warning(
-                        f"Sim time {self.sim_time:.4f} is out of sync with control time "
-                        f"{self._next_control_time:.4f} by {self.sim_time - self._next_control_time:.4f}s"
+                        f"Sim step {self.sim_step_count} is out of sync with control step "
+                        f"{self._next_control_step} by {self.sim_step_count - self._next_control_step} steps"
                     )
+                    self._next_control_step = self.sim_step_count + self._steps_per_control
+                else: self._next_control_step += self._steps_per_control
                 self._step()
-                self._next_control_time += self.control_dt
 
     def start(self):
         """
@@ -226,6 +255,7 @@ class Controller:
         real-world deployment.
         """
         logger.info(f"Starting control loop at {self.control_freq}Hz")
+        self._next_control_step = self.sim_step_count + self._steps_per_control
         self._thread = threading.Thread(target=self.run, daemon=True)
         self._thread.start()
 
