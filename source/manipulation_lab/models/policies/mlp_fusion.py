@@ -39,6 +39,9 @@ class MLPFusion(nn.Module):
         img = x[:, : self.img_input_dim]
         proprio = x[:, self.img_input_dim :]
 
+        if self.training:
+            proprio = proprio + torch.randn_like(proprio) * 0.01
+
         img = self.img_mlp(img)
         proprio = self.proprio_mlp(proprio)
         fusion = self.fusion_mlp(torch.cat([img, proprio], dim=-1))
