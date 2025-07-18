@@ -6,37 +6,26 @@ from typing import List, Optional
 from time import perf_counter
 import torch
 
+import manipulation_lab.scripts.control.model_handler as model_handler
+
 class Controller:
     def __init__(
         self,
         cfg,
-        model,
         control_freq: int,
         sim_dt: float,
         control_event: threading.Event,
-        camera_keys: Optional[List[str]] = None,
-        proprio_keys: Optional[List[str]] = None,
-        sensor_keys: Optional[List[str]] = None,
-        encoder: Optional[torch.nn.Module] = None,
     ):
         """
         # TODO: Write Controller init docstring
         """
+        self.model_handler = model_handler.ModelHandler(
+            cfg=cfg,
+        )
         self.cfg = cfg
         self.control_freq = control_freq
         self.control_dt = 1.0 / self.control_freq
         self.sim_dt = sim_dt
-
-        self.model = model
-        self.model.to(self.cfg.controller.device)
-        self.model_use_structured_obs = True #self.cfg.controller.model_use_structured_obs
-
-        self.encoder = encoder
-        if self.encoder: self.encoder.to(self.cfg.controller.device)
-
-        self.camera_keys = camera_keys
-        self.proprio_keys = proprio_keys
-        self.sensor_keys = sensor_keys
 
         self._shared_obs = {}
         self._shared_obs_lock = threading.Lock()
@@ -113,8 +102,6 @@ class Controller:
         TODO: Rewrite to maintain action across multiple steps while supporting action chunking.
         """
         self._schedule_actions(actions)
-            # self._action_buffer = [actions]
-            # self._last_action = self._action_buffer[0]
 
     def _schedule_actions(self, actions):
         """
@@ -139,34 +126,6 @@ class Controller:
             for i in range(chunk_size):
                 self._action_buffer.append((action_step, actions[i]))
                 action_step += sim_steps_per_action
-
-    def _extract_desired_obs(self, obs: dict):
-        """
-        Extracts the desired observation from the raw observation dictionary.
-        """
-        # TODO: What do we do if images are different dims? What if we want sensor and proprio data too?
-        def _get_nested_data(nested_dict: dict, key: str):
-            keys = key.split("/")
-            for k in keys:
-                nested_dict = nested_dict[k]
-            return nested_dict
-
-        camera_obs = {}
-        if self.camera_keys:
-            for key in self.camera_keys:
-                camera_obs[key] = _get_nested_data(obs, key)
-
-        proprio_obs = {}
-        if self.proprio_keys:
-            for key in self.proprio_keys:
-                proprio_obs[key] = _get_nested_data(obs, key)
-
-        sensor_obs = {}
-        if self.sensor_keys:
-            for key in self.sensor_keys:
-                sensor_obs[key] = _get_nested_data(obs, key)
-
-        return camera_obs, proprio_obs, sensor_obs
         
     def _step(self):
         """
@@ -175,41 +134,8 @@ class Controller:
         # TODO: What about unstructured data?
         inference_start_time = perf_counter()
 
-        # Get the latest observation and extract target data
         raw_obs = self._get_latest_obs()
-        camera_obs, proprio_obs, sensor_obs = self._extract_desired_obs(raw_obs)
-
-        obs = []
-
-        if self.model_use_structured_obs == False:
-            # Process all target data and append to obs list
-            if self.encoder is not None:
-                for _, value in camera_obs.items():
-                    value = torch.tensor(value, dtype=torch.float32).permute(2, 0, 1) / 255.0
-                    value = value.to(self.cfg.controller.device)
-                    cam_latent_obs = self.encoder(value)
-                    if cam_latent_obs.ndim == 2: cam_latent_obs = cam_latent_obs.squeeze(0)
-                    obs.append(cam_latent_obs)
-
-            if self.proprio_keys:
-                for _, value in proprio_obs.items():
-                    value = torch.tensor(value).to(self.cfg.controller.device)
-                    obs.append(value)   
-
-            if self.sensor_keys:
-                # TODO: How do we handle multidimensional sensor data?
-                for _, value in sensor_obs.items():
-                    value = torch.tensor(value).to(self.cfg.controller.device)
-                    obs.append(value)
-
-            # Concatenate all target data into flat tensor
-            obs = torch.cat(obs, dim=-1)
-
-        else: obs = (camera_obs, proprio_obs, sensor_obs)
-
-        # Run the model
-        with torch.no_grad():
-            actions = self.model(obs)
+        actions = self.model_handler.forward(raw_obs)
 
         inference_latency = perf_counter() - inference_start_time
         logger.debug(f"Inference latency: {inference_latency*100:.2f}ms")
