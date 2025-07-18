@@ -102,7 +102,7 @@ class DatasetWrapper(Dataset):
                 assert img.ndim == 3, f"Expected image to be (C, H, W), got {img.shape}"
 
                 # (H, W, C) -> (C, H, W) and uint8 -> float32
-                img = torch.tensor(img, dtype=torch.float32).permute(2, 0, 1) / 255.0
+                img = torch.tensor(img, dtype=torch.float32).permute(2, 0, 1)
 
                 # if self.image_encoder is not None:
                 #     # (C, H, W) -> (1, C, H, W)
