@@ -77,7 +77,7 @@ class TeleopHandler:
                 self.scene.write_data_to_sim()
 
 
-                settle_steps = int(1.5 / self.sim_dt)
+                settle_steps = int(0.5 / self.sim_dt)
                 for _ in range(settle_steps):
                     self.sim.step()
                     self.scene.update(self.sim_dt)
