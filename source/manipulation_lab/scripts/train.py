@@ -8,11 +8,16 @@ from hydra.utils import instantiate
 from manipulation_lab.scripts.dataset.loader import build_dataloader
 
 import torch
+import torch.multiprocessing as mp
 import time
 
 @hydra.main(config_path="../config/train", config_name="config", version_base=None)
 def main(cfg: DictConfig):
     encoder = instantiate(cfg.dataset.image_encoder) if cfg.dataset.image_encoder is not None else None
+    
+    # Set torch multiprocessing start method to spawn if using cuda to avoid errors with fork
+    if cfg.device == "cuda": mp.set_start_method("spawn", force=True)
+    
     # TODO: Allow custom dataset
     if cfg.custom_dataset is not None: raise NotImplementedError("Custom dataset not implemented in train.py")
     if cfg.custom_dataloader is None:
@@ -23,14 +28,16 @@ def main(cfg: DictConfig):
             )
     else: dataloader = instantiate(cfg.custom_dataloader)
 
-    sample_batch = next(iter(dataloader))
+    if cfg.model.input_dim is None:
+        logger.info("Sampling dataloader to get input dims ...")
+        sample_batch = next(iter(dataloader))
+        if isinstance(sample_batch, (tuple, list)):
+            obs, _ = sample_batch
+            input_dim = obs.shape[-1]
+            cfg.model.input_dim = input_dim
+        else: raise TypeError(f"Invalid batch type: {type(sample_batch)}")
 
-    if isinstance(sample_batch, (tuple, list)):
-        obs, _ = sample_batch
-        input_dim = obs.shape[-1]
-        cfg.model.input_dim = input_dim
-    else: raise TypeError(f"Invalid batch type: {type(sample_batch)}")
-
+    logger.info("Loading model...")
     try:
         model = instantiate(cfg.model)
     except Exception as e:
