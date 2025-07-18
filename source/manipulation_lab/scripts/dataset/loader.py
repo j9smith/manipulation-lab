@@ -77,6 +77,9 @@ def collate_fn(batch, structured_obs:bool, encoder:Optional[Module] = None):
             # Stack camera_key images across batch
             images = torch.stack([dict["camera"][camera_key] for dict in batch])
 
+            # TODO: We shouldn't always normalise by / 255
+            # Consider different models with different 
+            # normalisation statistics
             images = images.to(device).float() / 255.0 # Normalize to [0, 1]
 
             # Batch encode the images
@@ -103,9 +106,6 @@ def collate_fn(batch, structured_obs:bool, encoder:Optional[Module] = None):
         action_data.append(torch.stack([dict["actions"][action_key] for dict in batch]))
 
     actions = torch.cat(action_data, dim=-1)
-
-    # print(f"===================== OBS =================\n{torch.cat(list(obs.values()), dim=-1)}")
-    # print(f"===================== ACTIONS =============\n{actions}")
 
     if structured_obs:
         return obs, actions
