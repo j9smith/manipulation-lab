@@ -114,8 +114,8 @@ class BlocksEventCfg:
         params={
             "asset_cfg": SceneEntityCfg("cuboid_red"),# SceneEntityCfg("cuboid_blue")],
             "pose_range": {
-                "x": (-0.2, 0.2),
-                "y": (-0.2, 0.2),
+                "x": (-0.05, 0.05),
+                "y": (-0.05, 0.05),
                 "z": (0.0, 0.0)
             },
             "velocity_range": {}
@@ -128,8 +128,8 @@ class BlocksEventCfg:
         params={
             "asset_cfg": SceneEntityCfg("cuboid_blue"),
             "pose_range": {
-                "x": (-0.2, 0.2),
-                "y": (-0.2, 0.2),
+                "x": (-0.05, 0.05),
+                "y": (-0.05, 0.05),
                 "z": (0.0, 0.0)
             },
             "velocity_range": {}
@@ -141,7 +141,7 @@ class BlocksEventCfg:
         mode="reset",
         params={
             "asset_cfg": SceneEntityCfg("robot", joint_names=".*"),
-            "position_range": (-0.1, 0.1),
+            "position_range": (-0.05, 0.05),
             "velocity_range": (0.0, 0.0)
         }
     )
@@ -173,10 +173,6 @@ class BlocksEnv(DirectRLEnv):
 
     def __init__(self, cfg: BlocksEnvCfg):
         super().__init__(cfg)
-        print("--- Registered reset-mode events: ---")
-        for name, term in self.event_manager.active_terms.items():
-            print(f"AAAAAAAAAAAA\nName: {name}\nTerm: {term}\nAAAAAAAAAAAa")
-
 
     # def _reset_idx(self, env_ids):
     #     pass
