@@ -29,7 +29,7 @@ class ControllerInterface:
         Print control commands.
         """
         if self.controller == "xbox":
-            logger.info("Xbox Controller: A = start, B = abort, X = finish, Y = pause")
+            logger.info("Xbox Controller: A = start, B = abort, X = finish, Y = cycle phase")
 
     def _initialise_socket_connection(self):
         """
@@ -51,7 +51,6 @@ class ControllerInterface:
             action = list(self.controller_array)[:self.expected_action_dims]
         else: 
             action = [0.0] * self.expected_action_dims
-
         return torch.tensor(action, dtype=torch.float32)
 
     def get_episode_commands(self):
@@ -67,7 +66,8 @@ class ControllerInterface:
         elif episode_commands[2] == 1: # X
             return "finish"
         elif episode_commands[3] == 1: # Y
-            return "pause"
+            # return "pause" # TODO: Retiring pause in favour of advance phase
+            return "advance_phase"
         else:
             return None
 

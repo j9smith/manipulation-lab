@@ -101,16 +101,13 @@ class BlocksSceneCfg(InteractiveSceneCfg, RoomSceneCfg):
         init_state=RigidObjectCfg.InitialStateCfg(pos=(-0.15, 0.0, 0.05)),
     )
 
-def test(env, env_ids):
-    print(f"env ids: {env_ids}")
-
 @configclass
 class BlocksEventCfg:
     randomise_red_cube_placement = EventTermCfg(
         func=events.reset_root_state_with_random_orientation,
         mode="reset",
         params={
-            "asset_cfg": SceneEntityCfg("cuboid_red"),# SceneEntityCfg("cuboid_blue")],
+            "asset_cfg": SceneEntityCfg("cuboid_red"),
             "pose_range": {
                 "x": (-0.025, 0.025),
                 "y": (-0.025, 0.025),
@@ -144,12 +141,6 @@ class BlocksEventCfg:
         }
     )
 
-    test = EventTermCfg(
-        func=test,
-        mode="reset",
-        params={}
-    )
-
 @configclass
 class BlocksEnvCfg(DirectRLEnvCfg):
     """
@@ -159,7 +150,7 @@ class BlocksEnvCfg(DirectRLEnvCfg):
     decimation: int = 1
     scene: BlocksSceneCfg = BlocksSceneCfg(env_spacing=2.5)
     events = BlocksEventCfg()
-    episode_length_s: int = 60
+    episode_length_s: int = 30
     observation_space: int = 1
     action_space: int = 1
 
@@ -178,7 +169,6 @@ class BlocksEnv(DirectRLEnv):
     def _get_observations(self):
         return None
 
-
     @property
     def env_name(self):
         return "room"
@@ -186,3 +176,17 @@ class BlocksEnv(DirectRLEnv):
     @property
     def task_name(self):
         return "blocks"
+
+    @property
+    def task_language_instruction(self):
+        return "stack the red block on top of the blue block"
+
+    @property
+    def task_phases(self):
+        return [
+            "reach for the red block",
+            "grasp and lift the red block",
+            "move red block above blue block",
+            "lower red block onto blue block",
+            "release the red block"
+        ]

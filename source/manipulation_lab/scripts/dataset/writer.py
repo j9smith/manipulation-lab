@@ -7,18 +7,20 @@ Follows the RLDS schema:
 https://github.com/google-research/rlds
 """
 import logging
-logger = logging.getLogger("ManipulationLab.DatasetWriter")
+logger = logging.getLogger("ManiplationLab.DatasetWriter")
 
 import h5py
+from h5py import string_dtype
 from pathlib import Path
 import numpy as np
-import torch
 
 class DatasetWriter:
     def __init__(
         self, 
         env_name: str, 
-        task_name: str, 
+        task_name: str,
+        task_language_instruction: str,
+        task_phases: list[str],
         sim_dt: float, 
         buffer_size: int = 10000, 
         save_dir: str = "./datasets", 
@@ -31,6 +33,8 @@ class DatasetWriter:
         self.base_dir = Path(save_dir) / env_name / task_name
         self.env_name = env_name
         self.task_name = task_name
+        self.task_language_instruction = task_language_instruction
+        self.task_phases = task_phases
         self.sim_dt = sim_dt
         self.buffer_size = buffer_size
 
@@ -59,6 +63,7 @@ class DatasetWriter:
         self.episode_data_buffer = {
             "observations": [],
             "actions": [],
+            "task_phase": [],
             "is_first": [],
             "is_last": [],
             "sim_time": []
@@ -107,6 +112,7 @@ class DatasetWriter:
         if not self.episode_started:
             return
 
+        logger.info(f"Ending episode. Saving buffer to disk.")
         self.episode_data_buffer["is_last"][-1] = True # FIXME: Index error (-1 out of bounds)
         self._flush_buffer_to_disk()
         self.h5file.attrs["frame_count"] = self.time_dataset.shape[0]
@@ -130,7 +136,15 @@ class DatasetWriter:
             self.episode_file_path.unlink()
         self._reset_episode()
 
-    def append_frame(self, obs: dict, action: dict, is_first: bool, is_last: bool, sim_steps: int):
+    def append_frame(
+        self, 
+        obs: dict, 
+        action: dict,
+        task_phase: int,
+        is_first: bool, 
+        is_last: bool, 
+        sim_steps: int
+        ):
         """
         Appends one frame of data to the dataset.
         """
@@ -140,6 +154,7 @@ class DatasetWriter:
         # Append data to buffer
         self.episode_data_buffer["observations"].append(obs) # List[dict]
         self.episode_data_buffer["actions"].append(action) # List[dict]
+        self.episode_data_buffer["task_phase"].append(task_phase) # List[int]
         self.episode_data_buffer["is_first"].append(is_first) # List[bool]
         self.episode_data_buffer["is_last"].append(is_last) # List[bool]
         self.episode_data_buffer["sim_time"].append(sim_steps * self.sim_dt) # List[float]
@@ -160,11 +175,22 @@ class DatasetWriter:
             self.h5file.attrs["episode_id"] = self.episode_id
             self.h5file.attrs["env_name"] = self.env_name
             self.h5file.attrs["task_name"] = self.task_name
+            self.h5file.attrs["task_language_instruction"] = self.task_language_instruction
+            self.h5file.attrs["task_phases"] = np.array(
+                self.task_phases,
+                dtype=string_dtype(encoding="utf-8")
+            )
             self.h5file.attrs["sim_dt"] = self.sim_dt
 
             self.obs_group = self.h5file.create_group("observations")
             self.action_group = self.h5file.create_group("actions")
             self.flags_group = self.h5file.create_group("flags")
+            self.task_phase_dataset = self.h5file.create_dataset(
+                name="task_phase",
+                shape=(0,),
+                dtype='i',
+                maxshape=(None,)
+            )
             self.time_dataset = self.h5file.create_dataset(
                 name="sim_time",
                 shape=(0,),
@@ -289,6 +315,14 @@ class DatasetWriter:
                     )
                     flag_dataset[current_size:] = flag_data
                 else: raise TypeError(f"Flag dataset is not a h5py.Dataset")
+
+        task_phase_data = np.stack(self.episode_data_buffer["task_phase"])
+        current_size = self.task_phase_dataset.shape[0]
+        self.task_phase_dataset.resize(
+            (current_size + task_phase_data.shape[0]),
+            axis=0
+        )
+        self.task_phase_dataset[current_size:] = task_phase_data
 
         # Write sim time
         sim_time_data = np.stack(self.episode_data_buffer["sim_time"])
