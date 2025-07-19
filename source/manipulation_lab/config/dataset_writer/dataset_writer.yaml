@@ -1,0 +1,5 @@
+save_dir: "/home/ubuntu/Projects/manipulation_lab/datasets/"
+target_fps: 30
+compression: "gzip"
+buffer_size: 10000
+rgb_as_uint8: true

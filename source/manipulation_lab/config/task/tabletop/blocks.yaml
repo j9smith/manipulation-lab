@@ -4,5 +4,5 @@ cfg:
   scene:
     _target_: manipulation_lab.envs.tabletop.tasks.blocks_cfg.BlocksSceneCfg
     robot: ${robot}
-    num_envs: ${num_envs}
+    num_envs: ${launcher.num_envs}
     env_spacing: 2.5

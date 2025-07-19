@@ -1,5 +1,0 @@
-buffer_size: 50
-save_dir: "./datasets"
-target_fps: 30
-compression: "gzip"
-rgb_as_uint8: true

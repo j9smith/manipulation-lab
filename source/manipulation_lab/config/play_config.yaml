@@ -1,0 +1,28 @@
+# DEFAULTS
+defaults:
+  - launcher: launcher
+  - sim: sim
+  - robot: franka
+  - task: room/blocks
+  - dataset_writer: dataset_writer
+  - teleoperation: teleoperation
+  - model: mlpfusion
+  - encoder: resnet18
+  - encoder_weights: null
+  - _self_
+
+device: cuda
+teleop: true
+
+# Controller config for policy deployment
+controller:
+  control_frequency: 5
+  camera_keys: ["sensors/wrist_camera/rgb", "sensors/left_shoulder_camera/rgb"]
+  proprio_keys: ["robot/joint_pos"]
+  model_use_structured_obs: false
+  model_weights: "/home/ubuntu/Projects/manipulation_lab/outputs/test_model.pth"
+  sensor_keys: null
+
+openloop:
+  dataset_dir: "/home/ubuntu/Projects/manipulation_lab/datasets/room/blocks/"
+  episode_idx: 0

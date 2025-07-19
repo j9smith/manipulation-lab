@@ -1,0 +1,47 @@
+defaults:
+  - model: mlpfusion
+  - encoder: resnet18
+  - _self_
+
+device: cuda
+
+dataset:
+  dataset_dir: /home/ubuntu/Projects/manipulation_lab/datasets/room/blocks/
+  camera_keys: ["sensors/wrist_camera/rgb", "sensors/left_shoulder_camera/rgb"]
+  action_keys: ["ee_deltas", "gripper_deltas"]
+  proprio_keys: ["robot/joint_pos"]
+  sensor_keys: null
+  transform: null
+  structured_obs: false
+  splits:
+    train: 0.8
+    val: 0.1
+    test: 0.1
+  seed: 0
+
+# Use default dataloader
+dataloader:
+  batch_size: 16
+  shuffle: true
+  num_workers: 0 # Be cautious raising above 0 - OOM errors 
+
+optim:
+  lr: 1e-5
+epochs: 10
+train:
+  save_dir: /home/ubuntu/Projects/manipulation_lab/weights
+  save_name: test_model
+
+
+custom_dataset: null
+# Use custom dataloader. _target_ must be a valid torch.DataLoader
+custom_dataloader: null
+  #_target_: path.to.custom.dataloader.class
+  #dataset: _target_ must be a valid torch.Dataset
+  #  _target_: path.to.custom.dataset.class
+  # ... etc.
+
+
+
+
+

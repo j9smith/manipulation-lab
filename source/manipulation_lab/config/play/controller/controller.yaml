@@ -1,5 +1,0 @@
-remote_connection: true
-port: 8888
-controller: "xbox"
-expected_action_dims: 7
-expected_command_dims: 4

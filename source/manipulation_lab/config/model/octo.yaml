@@ -1,0 +1,4 @@
+model:
+  _target_: manipulation_lab.models.clients.octo_client.OctoClient
+    address: "tcp://0.0.0.0:8888"
+    device: cuda
