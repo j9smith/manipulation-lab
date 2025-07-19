@@ -11,27 +11,27 @@ class ModelHandler:
         cfg,
     ):
         self.cfg = cfg
-        device = self.cfg.controller.device
+        self.device = self.cfg.device
         logger.info("Loading controller ...")
 
         # Load policy model with defined weights
-        self.model = instantiate(self.cfg.controller.model)
+        self.model = instantiate(self.cfg.model)
         if self.cfg.controller.model_weights is not None:
                 logger.info(f"Loading model weights from {self.cfg.controller.model_weights}")
                 self.model.load_state_dict(
-                    torch.load(self.cfg.controller.model_weights, map_location=device, weights_only=True)
+                    torch.load(self.cfg.controller.model_weights, map_location=self.device, weights_only=True)
                 )
         else:
             logger.warning(
                 "No model weights specified. Ensure this was intentional."
             )
-        self.model.to(device).eval()
+        self.model.to(self.device).eval()
 
         # Load image encoder if defined
-        if self.cfg.controller.encoder is not None:
-            self.encoder = instantiate(self.cfg.controller.encoder)
+        if self.cfg.encoder is not None:
+            self.encoder = instantiate(self.cfg.encoder)
 
-            self.encoder.to(device).eval()
+            self.encoder.to(self.device).eval()
         else:
             self.encoder = None
 
@@ -79,22 +79,22 @@ class ModelHandler:
             # Process all target data and append to obs list
             if self.encoder is not None:
                 for _, value in camera_obs.items():
-                    value = torch.tensor(value, dtype=torch.float32).permute(2, 0, 1) / 255.0 # Normalize to [0, 1]
+                    value = torch.tensor(value, dtype=torch.float32).permute(2, 0, 1)
                     value = value.unsqueeze(0) # C, H, W -> B, C, H, W
-                    value = value.to(self.cfg.controller.device)
+                    value = value.to(self.device)
                     cam_latent_obs = self.encoder(value)
                     if cam_latent_obs.ndim == 2: cam_latent_obs = cam_latent_obs.squeeze(0)
                     obs.append(cam_latent_obs)
 
             if self.proprio_keys:
                 for _, value in proprio_obs.items():
-                    value = torch.tensor(value).to(self.cfg.controller.device)
+                    value = torch.tensor(value).to(self.device)
                     obs.append(value)   
 
             if self.sensor_keys:
                 # TODO: How do we handle multidimensional sensor data?
                 for _, value in sensor_obs.items():
-                    value = torch.tensor(value).to(self.cfg.controller.device)
+                    value = torch.tensor(value).to(self.cfg.device)
                     obs.append(value)
 
             # Concatenate all target data into flat tensor
