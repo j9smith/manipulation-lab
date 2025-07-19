@@ -12,6 +12,7 @@ class DatasetWrapper(Dataset):
     def __init__(
         self,
         dataset_dir: str,
+        episode_indices: List[int],
         camera_keys: List[str],
         action_keys: List[str],
         proprio_keys: Optional[List[str]] = None,
@@ -26,6 +27,7 @@ class DatasetWrapper(Dataset):
 
         Parameters:
         - dataset_dir: str - The directory containing the dataset.
+        - episode_indices: List[int] - The episodes to load into the dataset (for train/test/val splits).
         - camera_keys: List[str] - The keys to the target camera data in the episode dictionary,
         e.g. ['sensors/wrist_camera/rgb', 'sensors/left_shoulder_camera/rgb']. Any camera data can
         have transforms applied.
@@ -47,13 +49,13 @@ class DatasetWrapper(Dataset):
         action data for the target frame, if image_encoder is None and structured_obs is False.
         """
         self.reader = DatasetReader(dataset_dir=dataset_dir)
+        self.episode_indices = episode_indices
         self.camera_keys = camera_keys
         self.action_keys = action_keys
         self.proprio_keys = proprio_keys
         self.sensor_keys = sensor_keys
         self.transform = transform
         self.image_encoder = image_encoder
-        self.structured_obs = True # FIXME: Remove this after testing collate_fn
         self.encoder_device = next(self.image_encoder.parameters()).device if self.image_encoder is not None else None
 
         self._episode_cache: dict[int, dict] = {}
@@ -67,7 +69,7 @@ class DatasetWrapper(Dataset):
         """
         index = []
 
-        for episode_idx in range(len(self.reader)):
+        for episode_idx in self.episode_indices:
             ep_frame_count = self.reader.get_frame_count(episode_idx)
             index.extend([(episode_idx, frame_idx) for frame_idx in range(ep_frame_count)])
 
@@ -104,15 +106,6 @@ class DatasetWrapper(Dataset):
                 # (H, W, C) -> (C, H, W) and uint8 -> float32
                 img = torch.tensor(img, dtype=torch.float32).permute(2, 0, 1)
 
-                # if self.image_encoder is not None:
-                #     # (C, H, W) -> (1, C, H, W)
-                #     # Encoder expects batch dimension
-                #     img = img.to(self.encoder_device)
-                #     img = self.image_encoder(img.unsqueeze(0)).to("cpu")
-
-                #     # (1, D) -> (D,)
-                #     img = img.squeeze(0)
-
                 camera_obs.append(img)
 
         proprio_obs = []
@@ -140,40 +133,20 @@ class DatasetWrapper(Dataset):
             assert action.ndim == 1, f"Expected action data to be (N,), got {action.shape}"
             actions.append(action)
 
-        # TODO: Add checks to ensure we can't use unstructured obs when dim mismatch may be a risk
-        if self.structured_obs or (self.camera_keys is not None and self.image_encoder is None):
-            data = {
-                "metadata":{
-                    "episode_idx": ep_idx,
-                    "frame_idx": frame_idx
-                },
-                "actions": { action_key: actions[idx] for idx, action_key in enumerate(self.action_keys) },
-            }
-            if self.camera_keys:
-                data["camera"] = {camera_key: camera_obs[idx] for idx, camera_key in enumerate(self.camera_keys)}
-            if self.proprio_keys:
-                data["proprio"] = { prop_key: proprio_obs[idx] for idx, prop_key in enumerate(self.proprio_keys) }
-            if self.sensor_keys:
-                data["sensor"] = { sensor_key: sensor_obs[idx] for idx, sensor_key in enumerate(self.sensor_keys) }
-
-            return data
-
-        else:
-            obs = []
-
-            # Only concat if there is data to concat, otherwise we'll get a dim mismatch
-            if camera_obs: obs += camera_obs
-            if proprio_obs: obs += proprio_obs
-            if sensor_obs: obs += sensor_obs
-
-            obs = torch.cat(obs, dim=-1)
-            actions = torch.cat(actions, dim=-1)
-
-            assert isinstance(obs, torch.Tensor), f"Expected obs to be a tensor, got {type(obs)}"
-            assert isinstance(actions, torch.Tensor), f"Expected actions to be a tensor, got {type(actions)}"
-            assert isinstance((obs, actions), tuple), f"Expected (obs, actions) to be a tuple, got {type((obs, actions))}"
-            
-            return obs, actions
+        data = {
+            "metadata":{
+                "episode_idx": ep_idx,
+                "frame_idx": frame_idx
+            },
+            "actions": { action_key: actions[idx] for idx, action_key in enumerate(self.action_keys) },
+        }
+        if self.camera_keys:
+            data["camera"] = {camera_key: camera_obs[idx] for idx, camera_key in enumerate(self.camera_keys)}
+        if self.proprio_keys:
+            data["proprio"] = { prop_key: proprio_obs[idx] for idx, prop_key in enumerate(self.proprio_keys) }
+        if self.sensor_keys:
+            data["sensor"] = { sensor_key: sensor_obs[idx] for idx, sensor_key in enumerate(self.sensor_keys) }
+        return data
 
     def _get_nested_data(self, nested_dict: dict, key: str):
         """

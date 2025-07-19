@@ -2,39 +2,74 @@ import logging
 logger = logging.getLogger("ManipulationLab.DataLoader")
 
 from manipulation_lab.scripts.dataset.wrapper import DatasetWrapper
+from manipulation_lab.scripts.dataset.reader import DatasetReader
 from torch.utils.data import DataLoader
 from typing import Optional
 import torch
 from torch.nn import Module
 from functools import partial
+import random
 
-def build_dataloader(
+def build_dataloaders(
     cfg, 
     encoder:Optional[Module] = None,
     structured_obs:bool = False
 ):
-    logger.info("Building DataLoader")
-    dataset= DatasetWrapper(
-        dataset_dir=cfg.dataset.dataset_dir,
-        camera_keys=cfg.dataset.camera_keys,
-        action_keys=cfg.dataset.action_keys,
-        proprio_keys=cfg.dataset.get("proprio_keys", None),
-        sensor_keys=cfg.dataset.get("sensor_keys", None),
-        transform=cfg.dataset.get("transform", None),
-        image_encoder=encoder,
+    reader = DatasetReader(cfg.dataset.dataset_dir)
+    train_eps, val_eps, test_eps = _split_episodes(
+        reader=reader,
+        splits=cfg.dataset.splits,
+        seed=cfg.dataset.seed
     )
 
-    return DataLoader(
-        dataset=dataset,
-        batch_size=cfg.dataloader.batch_size,
-        shuffle=cfg.dataloader.shuffle,
-        num_workers=cfg.dataloader.num_workers,
-        collate_fn=partial(
-            collate_fn, 
-            encoder=encoder,
-            structured_obs=structured_obs
+    logger.info("Building DataLoaders")
+    datasets = {}
+    dataloaders = {}
+    for split, episodes in zip(['train', 'val', 'test'], [train_eps, val_eps, test_eps]):
+        datasets[split]= DatasetWrapper(
+            dataset_dir=cfg.dataset.dataset_dir,
+            episode_indices=episodes,
+            camera_keys=cfg.dataset.camera_keys,
+            action_keys=cfg.dataset.action_keys,
+            proprio_keys=cfg.dataset.get("proprio_keys", None),
+            sensor_keys=cfg.dataset.get("sensor_keys", None),
+            transform=cfg.dataset.get("transform", None),
+            image_encoder=encoder,
         )
-    )
+
+        dataloaders[split] = DataLoader(
+            dataset=datasets[split],
+            batch_size=cfg.dataloader.batch_size,
+            shuffle=(split=="train"),
+            num_workers=cfg.dataloader.num_workers,
+            collate_fn=partial(
+                collate_fn, 
+                encoder=encoder,
+                structured_obs=structured_obs
+            )
+        )
+    
+    return dataloaders
+
+def _split_episodes(reader, splits, seed):
+    logger.info("Splitting episodes into train, test, and val sets.")
+    number_of_episodes = len(reader)
+    episode_indices = list(range(number_of_episodes))
+
+    random.Random(seed).shuffle(episode_indices)
+
+    n_test = int(splits["test"] * number_of_episodes)
+    n_val = int(splits["val"] * number_of_episodes)
+    n_train = number_of_episodes - n_test - n_val
+
+    assert n_test + n_val + n_train == number_of_episodes, "Training splits exceeded n episodes"
+
+    train_ep_indices = episode_indices[:n_train]
+    val_ep_indices = episode_indices[n_train: n_train + n_val]
+    test_ep_indices = episode_indices[n_train + n_val:]
+
+    return train_ep_indices, val_ep_indices, test_ep_indices
+
 
 def collate_fn(batch, structured_obs:bool, encoder:Optional[Module] = None):
     """
@@ -77,10 +112,7 @@ def collate_fn(batch, structured_obs:bool, encoder:Optional[Module] = None):
             # Stack camera_key images across batch
             images = torch.stack([dict["camera"][camera_key] for dict in batch])
 
-            # TODO: We shouldn't always normalise by / 255
-            # Consider different models with different 
-            # normalisation statistics
-            images = images.to(device).float() / 255.0 # Normalize to [0, 1]
+            images = images.to(device).float()
 
             # Batch encode the images
             encoded = encoder(images).cpu()
