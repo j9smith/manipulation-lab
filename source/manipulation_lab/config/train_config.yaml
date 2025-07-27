@@ -5,13 +5,19 @@ defaults:
 
 device: cuda
 
+use_pretrained_weights: false
+pretrained_weights_path: "/home/ubuntu/Projects/manipulation_lab/weights/test_model.pth"
+
 dataset:
-  dataset_dir: /home/ubuntu/Projects/manipulation_lab/datasets/room/blocks/
+  dataset_dirs: [
+    "/home/ubuntu/Projects/manipulation_lab/datasets/room/blocks/clean/",
+    ]
   camera_keys: ["sensors/wrist_camera/rgb", "sensors/left_shoulder_camera/rgb"]
-  action_keys: ["ee_deltas", "gripper_deltas"]
+  action_keys: ["expert/ee_deltas", "expert/gripper_deltas"]
   proprio_keys: ["robot/joint_pos"]
   sensor_keys: null
-  transform: null
+  sequence_length: 1
+  stride: 1
   structured_obs: false
   splits:
     train: 0.8
