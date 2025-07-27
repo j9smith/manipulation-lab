@@ -1,5 +1,5 @@
 ## Project-wide
-- [] Implement W&B logging
+- [~] Implement W&B logging
 - [] Centralise processing of images and sensor data - we're currently tackling them separately during training and inference, which could risk divergence.
 - [] **Critical**: Discrepency between control frequency and data collection frequency. How do we train a policy that operates at, e.g., 10Hz on data that is available at 30Hz? Do we scale deltas? 
 
@@ -11,7 +11,7 @@
 
 ## Controller
 - [X] Populate init config via hydra
-- [] Implement _schedule_actions for actions chunks etc.
+- [X] Implement _schedule_actions for actions chunks etc.
 - [X] Implement control _step logic.
 - [] How do we handle sensor data?
 
@@ -34,11 +34,11 @@
 - [X] Batch processing of images instead, sequential is too slow
 
 ## Train
-- [] Add validation data and then measure accuracy/loss against val to better inform training metrics
-- [] Add open loop roll-outs for debugging
+- [X] Add validation data and then measure accuracy/loss against val to better inform training metrics
+- [X] Add open loop roll-outs for debugging
 
 ## Models - Policy 
-- [] Add a network that processes the visual embedding dims separate from the proprio dims, and then fuse them
+- [X] Add a network that processes the visual embedding dims separate from the proprio dims, and then fuse them
 
 ## Models - Encoder
 - []
