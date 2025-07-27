@@ -5,14 +5,24 @@ import h5py
 from pathlib import Path
 
 class DatasetReader:
-    def __init__(self, dataset_dir: str):
-        self.dataset_dir = Path(dataset_dir)
-        assert self.dataset_dir.exists(), f"Dataset directory {self.dataset_dir} does not exist"
+    def __init__(self, dataset_dirs):
+        self.dataset_dirs = [Path(p) for p in dataset_dirs]
 
-        self.episodes = sorted(self.dataset_dir.glob("*.hdf5"))
-        assert len(self.episodes) > 0, f"No episodes found in {self.dataset_dir}"
+        self.episodes = []
+        self.episode_sources = []
 
-        logger.info(f"Found {len(self.episodes)} episodes in {self.dataset_dir}")
+        for dir in self.dataset_dirs:
+            assert dir.exists(), f"Dataset directory {str(dir)} does not exist."
+            files = sorted(dir.glob("*.hdf5"))
+            self.episodes.extend(sorted(files))
+
+            # Record dataset source
+            self.episode_sources.extend(["dagger" if "dagger" in str(dir) else "clean"] * len(files))
+
+            logger.info(f"Found {len(self.episodes)} episodes in {str(dir)}")
+
+        assert len(self.episodes) > 0, f"No episodes found."
+        assert len(self.episodes) == len(self.episode_sources)
 
     def __len__(self):
         """
@@ -58,7 +68,6 @@ class DatasetReader:
                 episode["actions"] = read_group(file["actions"])
                 episode["flags"] = read_group(file["flags"])
                 episode["sim_time"] = read_group(file["sim_time"])
-
                 return episode
         except Exception as e:
             import sys
