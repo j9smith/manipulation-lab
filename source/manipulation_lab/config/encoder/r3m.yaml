@@ -1,0 +1,2 @@
+_target_: manipulation_lab.models.encoders.r3m.R3MEncoder
+device: cuda
