@@ -18,7 +18,26 @@ class TeleopHandler:
         self.sim_steps = 0
         self.sim_dt = self.sim.get_physics_dt()
         self.cfg = cfg
+        self.dagger = self.cfg.dagger
 
+        # TODO: If we're using the policy network to control the robot, we may
+        # need to update ActionHandler's control_mode to reflect the action space
+        if self.dagger == True:
+            import os
+            from threading import Event
+            from manipulation_lab.scripts.control.controller import Controller
+
+            cfg.dataset_writer.save_dir = os.path.join(cfg.dataset_writer.save_dir, "dagger")
+
+            self.control_event = Event()
+
+            self.controller = Controller(
+                cfg=self.cfg,
+                control_freq=cfg.controller.control_frequency,
+                sim_dt=self.sim_dt,
+                control_event=self.control_event
+            )
+            
         self.teleop_controller = ControllerInterface(**cfg.teleoperation.teleop_controller)
         self.action_handler = ActionHandler(env=self.env, control_mode="delta_cartesian")
         self.obs_handler = ObservationHandler(env=self.env)
@@ -28,6 +47,7 @@ class TeleopHandler:
             task_language_instruction= self.env.task_language_instruction,
             task_phases=self.env.task_phases,
             sim_dt=self.sim.get_physics_dt(),
+            dagger_mode=self.dagger,
             **cfg.dataset_writer
         )
 
@@ -46,13 +66,19 @@ class TeleopHandler:
             f"(sim_dt={self.sim_dt:.4f}s)"
             )
 
-        task_phases = []
-        for i in range(len(self.env.task_phases)):
-            task_phases.append(
-                f"Phase {i}: {self.env.task_phases[i]}\n"
+        if self.dagger:
+            logger.info(
+                f"Running in DAgger mode. Controller operating at {self.controller.control_freq}Hz."
             )
-        logger.info(f"Task Phases:\n" + "".join(task_phases))
-        logger.info(f"Current phase: [{self._current_phase}] {self.env.task_phases[self._current_phase]}")
+        else:
+            task_phases = []
+            for i in range(len(self.env.task_phases)):
+                task_phases.append(
+                    f"Phase {i}: {self.env.task_phases[i]}\n"
+                )
+            logger.info(f"Task Phases:\n" + "".join(task_phases))
+            logger.info(f"Current phase: [{self._current_phase}] {self.env.task_phases[self._current_phase]}")
+
 
         while simulation_app.is_running():
             episode_command = self.teleop_controller.get_episode_commands()
@@ -80,33 +106,50 @@ class TeleopHandler:
                     self._advance_phase()
 
             def _continue_episode():
-                self.sim_steps += 1
+                obs = self.obs_handler.get_obs()
 
                 # Get the teleoperated action
-                action = self.teleop_controller.get_action()
+                teleop_action = self.teleop_controller.get_action()
+
+                recorded_actions = {
+                    "expert": {
+                        "ee_deltas": teleop_action[:6],
+                        "gripper_deltas": teleop_action[6]
+                    },
+                }
+
+                if self.dagger:
+                    self.controller.sim_step_count = self.sim_steps
+                    self.controller.update_obs(obs)
+                    self.control_event.set()
+                    controller_action = self.controller.get_action()
+
+                    recorded_actions["policy"] = {
+                        "ee_deltas": controller_action[:6],
+                        "gripper_deltas": controller_action[6:]
+                    }
 
                 # Record observations at target FPS
                 if self.sim_steps % capture_frequency == 0:
                     is_first = (self.sim_steps == 0)
                     is_last = False # TODO: Add _get_dones to task scene, then put it here (returns bool)
-                    obs = self.obs_handler.get_obs()
                     self.dataset_writer.append_frame(
                         obs=obs,
-                        action={"ee_deltas": action[:6], "gripper_deltas": action[6]},
+                        action=recorded_actions,
                         task_phase=self._current_phase,
                         is_first=is_first,
                         is_last=is_last,
                         sim_steps=self.sim_steps
                     )
 
-                # Apply the teleoperated action to the robot
-                self.action_handler.apply(action=action)
+                if self.dagger and controller_action is not None:
+                    self.action_handler.apply(action=controller_action)
+                else:
+                    self.action_handler.apply(action=teleop_action)
 
-            # Step the simulation
-            self.sim.step()
-
-            # Update buffers to reflect new sim state
-            self.scene.update(self.sim_dt)
+                self.sim.step()
+                self.scene.update(self.sim_dt)
+                self.sim_steps += 1
         
     def _reset_scene(self):
         # TODO: Do some ablations here to find out what we can get rid of

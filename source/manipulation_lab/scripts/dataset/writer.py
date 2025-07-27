@@ -26,17 +26,20 @@ class DatasetWriter:
         save_dir: str = "./datasets", 
         compression: str = "gzip", 
         rgb_as_uint8: bool = True,
+        dagger_mode: bool = False,
         **kwargs
         ):
 
         # Metadata
-        self.base_dir = Path(save_dir) / env_name / task_name
+        suffix = "dagger" if dagger_mode else "clean"
+        self.base_dir = Path(save_dir) / env_name / task_name / suffix
         self.env_name = env_name
         self.task_name = task_name
         self.task_language_instruction = task_language_instruction
         self.task_phases = task_phases
         self.sim_dt = sim_dt
         self.buffer_size = buffer_size
+        self.dagger_mode = dagger_mode
 
         # Episode data
         self.episode_data_buffer = {}
@@ -139,7 +142,7 @@ class DatasetWriter:
     def append_frame(
         self, 
         obs: dict, 
-        action: dict,
+        actions: dict,
         task_phase: int,
         is_first: bool, 
         is_last: bool, 
@@ -153,7 +156,7 @@ class DatasetWriter:
 
         # Append data to buffer
         self.episode_data_buffer["observations"].append(obs) # List[dict]
-        self.episode_data_buffer["actions"].append(action) # List[dict]
+        self.episode_data_buffer["actions"].append(actions) # List[dict]
         self.episode_data_buffer["task_phase"].append(task_phase) # List[int]
         self.episode_data_buffer["is_first"].append(is_first) # List[bool]
         self.episode_data_buffer["is_last"].append(is_last) # List[bool]
@@ -174,6 +177,7 @@ class DatasetWriter:
 
             self.h5file.attrs["episode_id"] = self.episode_id
             self.h5file.attrs["env_name"] = self.env_name
+            self.h5file.attrs["collection_mode"] = "dagger" if self.dagger_mode else "expert"
             self.h5file.attrs["task_name"] = self.task_name
             self.h5file.attrs["task_language_instruction"] = self.task_language_instruction
             self.h5file.attrs["task_phases"] = np.array(
