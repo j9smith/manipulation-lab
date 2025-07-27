@@ -18,9 +18,15 @@ class ModelHandler:
         self.model = instantiate(self.cfg.model)
         if self.cfg.controller.model_weights is not None:
                 logger.info(f"Loading model weights from {self.cfg.controller.model_weights}")
-                self.model.load_state_dict(
-                    torch.load(self.cfg.controller.model_weights, map_location=self.device, weights_only=True)
-                )
+                try:
+                    self.model.load_state_dict(
+                        torch.load(self.cfg.controller.model_weights, map_location=self.device, weights_only=True)
+                    )
+                except Exception as e:
+                    logger.warning(
+                        f"Exception:\n{e}\nModel weights specified but model does not accept weights. "
+                        f"Continuing without loading weights. Ensure this behaviour is intentional."
+                    )
         else:
             logger.warning(
                 "No model weights specified. Ensure this was intentional."
@@ -42,35 +48,93 @@ class ModelHandler:
         self.model_use_structured_obs = self.cfg.controller.model_use_structured_obs
 
     def _extract_desired_obs(self, obs: dict):
-     """
-     Extracts the desired observation from the raw observation dictionary.
-     """
-     # TODO: What do we do if images are different dims? What if we want sensor and proprio data too?
-     def _get_nested_data(nested_dict: dict, key: str):
-         keys = key.split("/")
-         for k in keys:
-             nested_dict = nested_dict[k]
-         return nested_dict
+        """
+        Extracts the desired observation from the raw observation dictionary.
 
-     camera_obs = {}
+        Parameters:
+        - obs: dict - A dictionary of raw observations passed from ObsHandler of the format e.g.,
+        {
+            "sensors": {
+                "wrist_camera": {
+                        "rgb": nparray,
+                        ...
+                    },
+            },
+            "robot": {
+                "joint_pos": nparray,
+                ...
+            }
+        }
 
-     if self.camera_keys:
-         for key in self.camera_keys:
-             camera_obs[key] = _get_nested_data(obs, key)
+        Returns:
+        - camera_obs: A flattened dictionary of { key: nparray }, e.g.
+        {
+            "sensors/camera_key/rgb": nparray
+        }
+        - proprio_obs: A flattened dictionary of { key: nparray }
+        - sensor_obs: A flattened dictionary of { key: nparray }
+        """
 
-     proprio_obs = {}
-     if self.proprio_keys:
-         for key in self.proprio_keys:
-             proprio_obs[key] = _get_nested_data(obs, key)
+        # TODO: What do we do if images are different dims? What if we want sensor and proprio data too?
+        def _get_nested_data(nested_dict: dict, key: str):
+            """
+            Extracts observation data from nested dictionaries.
 
-     sensor_obs = {}
-     if self.sensor_keys:
-         for key in self.sensor_keys:
-             sensor_obs[key] = _get_nested_data(obs, key)
+            Parameters:
+            - nested_dict: A dictionary of dictionaries.
+            - key: The key referring to the data to resolve, e.g.
+            "sensors/sensor_name/type" resolves nested_dict[sensors][sensor_name][type]
 
-     return camera_obs, proprio_obs, sensor_obs
+            Returns: The data contained at the leaf of the dictionary
+            """
+            keys = key.split("/")
+            for k in keys:
+                nested_dict = nested_dict[k]
+            return nested_dict
 
-    def forward(self, raw_obs):
+        camera_obs = {} 
+        if self.camera_keys:
+            for key in self.camera_keys:
+                camera_obs[key] = _get_nested_data(obs, key)    
+
+        proprio_obs = {}
+        if self.proprio_keys:
+            for key in self.proprio_keys:
+                proprio_obs[key] = _get_nested_data(obs, key)   
+
+        sensor_obs = {}
+        if self.sensor_keys:
+            for key in self.sensor_keys:
+                sensor_obs[key] = _get_nested_data(obs, key)   
+
+        return camera_obs, proprio_obs, sensor_obs
+
+    def forward(self, raw_obs: dict) -> torch.Tensor:
+        """
+        Performs a forward pass of the loaded model. If model takes structured obs, the forward pass
+        will send a dictionary of {key: data,} to the model for handling. Otherwise, the forward pass
+        will encode images, concatenate with other obs, and then send a tensor of shape (B, D_total)
+        to the model. 
+
+        Parameters:
+        - raw_obs: dict - A dictionary of raw observations passed from ObsHandler of the format e.g.,
+        {
+            "sensors": {
+                "wrist_camera": {
+                        "rgb": nparray,
+                        ...
+                    },
+            },
+            "robot": {
+                "joint_pos": nparray,
+                ...
+            }
+        }
+
+        Returns:
+        - actions: torch.Tensor: A tensor of action commands of which the shape and type
+        are defined by the model and specified by the user in config.
+        """
         camera_obs, proprio_obs, sensor_obs = self._extract_desired_obs(raw_obs)
 
         obs = []
@@ -83,6 +147,8 @@ class ModelHandler:
                     value = value.unsqueeze(0) # C, H, W -> B, C, H, W
                     value = value.to(self.device)
                     cam_latent_obs = self.encoder(value)
+
+                    # If encoder returns (B, D), squeeze to (D) for concatenating
                     if cam_latent_obs.ndim == 2: cam_latent_obs = cam_latent_obs.squeeze(0)
                     obs.append(cam_latent_obs)
 
@@ -100,13 +166,21 @@ class ModelHandler:
             # Concatenate all target data into flat tensor
             obs = torch.cat(obs, dim=-1)
 
+            # Expect that models will generally require a batch dimension (B, D_total)
+            if obs.ndim == 1: obs = obs.unsqueeze(0)
+
         else: obs = (camera_obs, proprio_obs, sensor_obs)
 
-        if self.model_use_structured_obs == False and obs.ndim == 1:
-            obs = obs.unsqueeze(0)
-
-        # Run the model
         with torch.no_grad():
-            actions = self.model(obs)
+            try:
+                actions = self.model(obs)
+            except Exception as e:
+                logger.warning(
+                    f"Error processing model input: {e}"
+                )
+                raise ValueError(
+                    f"Ensure that config parameter 'model_use_structured_obs' "
+                    f"is correctly specified for the model you are using."
+                )
 
         return actions
