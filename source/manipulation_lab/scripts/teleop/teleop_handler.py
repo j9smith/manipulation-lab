@@ -37,6 +37,8 @@ class TeleopHandler:
                 sim_dt=self.sim_dt,
                 control_event=self.control_event
             )
+
+            self.controller.start()
             
         self.teleop_controller = ControllerInterface(**cfg.teleoperation.teleop_controller)
         self.action_handler = ActionHandler(env=self.env, control_mode="delta_cartesian")
@@ -68,7 +70,7 @@ class TeleopHandler:
 
         if self.dagger:
             logger.info(
-                f"Running in DAgger mode. Controller operating at {self.controller.control_freq}Hz."
+                f"Running in DAgger mode."
             )
         else:
             task_phases = []
@@ -147,9 +149,10 @@ class TeleopHandler:
                 else:
                     self.action_handler.apply(action=teleop_action)
 
-                self.sim.step()
-                self.scene.update(self.sim_dt)
                 self.sim_steps += 1
+
+            self.sim.step()
+            self.scene.update(self.sim_dt)
         
     def _reset_scene(self):
         # TODO: Do some ablations here to find out what we can get rid of
