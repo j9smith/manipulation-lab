@@ -12,15 +12,18 @@ defaults:
   - _self_
 
 device: cuda
-teleop: true
+
+# Teleop mode
+teleop: false
+dagger: false
 
 # Controller config for policy deployment
 controller:
-  control_frequency: 5
-  camera_keys: ["sensors/wrist_camera/rgb", "sensors/left_shoulder_camera/rgb"]
+  control_frequency: 30
+  camera_keys: ["sensors/left_shoulder_camera/rgb"]
   proprio_keys: ["robot/joint_pos"]
   model_use_structured_obs: false
-  model_weights: "/home/ubuntu/Projects/manipulation_lab/outputs/test_model.pth"
+  model_weights: "/home/ubuntu/Projects/manipulation_lab/weights/test_model.pth"
   sensor_keys: null
 
 openloop:
