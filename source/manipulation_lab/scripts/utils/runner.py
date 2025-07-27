@@ -29,20 +29,14 @@ class TaskRunner:
         # Models
         self.model = None
         self.encoder = None
-        self.controller = self._load_controller()
-
-        self.step_count = 0
-
-    def _load_controller(self):
-        """
-        Initialises the models and the controller.
-        """
-        return Controller(
+        self.controller = Controller(
             cfg=self.cfg,
             control_freq=self.cfg.controller.control_frequency,
             control_event=self.control_event,
             sim_dt=self.sim_dt,
         )
+
+        self.step_count = 0
 
     def run(self, simulation_app):
         """
@@ -54,9 +48,10 @@ class TaskRunner:
             # Step simulator and update sim time
             self.sim.step()
             self.step_count += 1
-            sim_time = self.step_count * self.sim_dt
-            self.controller.sim_time = sim_time
             self.controller.sim_step_count = self.step_count
+
+             # Update buffers to reflect new sim state
+            self.scene.update(self.sim_dt)
 
             # Get observations and push to controller
             obs = self.obs_handler.get_obs()
@@ -64,11 +59,9 @@ class TaskRunner:
 
             # Inform the control loop that the sim has stepped
             self.control_event.set()
-
-            # Update buffers to reflect new sim state
-            self.scene.update(self.sim_dt)
             
             # Check for new actions from controller
             action = self.controller.get_action()
             if action is not None:
+                logger.info(f"Applying action: {action}")
                 self.action_handler.apply(action=action)
