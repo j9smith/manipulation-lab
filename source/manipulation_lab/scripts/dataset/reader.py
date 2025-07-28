@@ -19,7 +19,7 @@ class DatasetReader:
             # Record dataset source
             self.episode_sources.extend(["dagger" if "dagger" in str(dir) else "clean"] * len(files))
 
-            logger.info(f"Found {len(self.episodes)} episodes in {str(dir)}")
+            logger.info(f"Found {len(files)} episodes in {str(dir)}")
 
         assert len(self.episodes) > 0, f"No episodes found."
         assert len(self.episodes) == len(self.episode_sources)
@@ -83,11 +83,11 @@ class DatasetReader:
             with h5py.File(episode_path, "r") as file:
                 frame_count = file.attrs["frame_count"]
                 if isinstance(frame_count, h5py.Empty):
-                    raise ValueError(f"Frame count not found for episode {episode_path.name}.")
+                    raise ValueError(f"Frame count not found for episode {episode_path}.")
                 else: return int(frame_count)
         except Exception as e:
             import sys
-            logger.critical(f"Failed to get frame count for episode {episode_path.name}: {e}")
+            logger.critical(f"Failed to get frame count for episode {episode_path}: {e}")
             sys.exit(1)
 
     def describe_structure(self, episode_idx: int = 0):
