@@ -45,6 +45,8 @@ class TaskRunner:
         self._reset_scene()
         self.controller.start()
 
+        max_sim_steps = int(10.0 / self.sim_dt)
+
         while simulation_app.is_running():
             # Step simulator and update sim time
             self.sim.step()
@@ -64,8 +66,10 @@ class TaskRunner:
             # Check for new actions from controller
             action = self.controller.get_action()
             if action is not None:
-                logger.info(f"Applying action: {action}")
                 self.action_handler.apply(action=action)
+
+            if self.step_count >= max_sim_steps:
+                self._reset_scene()
 
     def _reset_scene(self):
         # TODO: Do some ablations here to find out what we can get rid of
@@ -82,5 +86,8 @@ class TaskRunner:
         for _ in range(settle_steps):
             self.sim.step()
             self.scene.update(self.sim_dt)
+
+        self.step_count = 0
+        self.controller.reset()
             
         logger.info("Scene reset.")
