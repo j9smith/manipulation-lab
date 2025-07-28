@@ -42,6 +42,7 @@ class TaskRunner:
         """
         Runs the simulation loop.
         """
+        self._reset_scene()
         self.controller.start()
 
         while simulation_app.is_running():
@@ -65,3 +66,21 @@ class TaskRunner:
             if action is not None:
                 logger.info(f"Applying action: {action}")
                 self.action_handler.apply(action=action)
+
+    def _reset_scene(self):
+        # TODO: Do some ablations here to find out what we can get rid of
+        logger.info("Resetting scene ...")
+        self.env.reset()
+        self.sim.step()
+
+        self.scene.update(self.sim_dt)
+        robot = self.scene.articulations["robot"]
+        robot.set_joint_position_target(robot.data.joint_pos)
+        self.scene.write_data_to_sim()
+
+        settle_steps = int(0.5 / self.sim_dt)
+        for _ in range(settle_steps):
+            self.sim.step()
+            self.scene.update(self.sim_dt)
+            
+        logger.info("Scene reset.")
