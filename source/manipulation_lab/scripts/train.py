@@ -44,7 +44,7 @@ def main(cfg: DictConfig):
     
     # Set torch multiprocessing start method to spawn if using cuda to avoid errors with fork
     if cfg.device == "cuda": mp.set_start_method("spawn", force=True)
-    
+
     # ----- Build dataloaders -----
     # TODO: Allow custom dataset
     if cfg.custom_dataset is not None: raise NotImplementedError("Custom dataset not implemented in train.py")
@@ -106,6 +106,12 @@ def main(cfg: DictConfig):
         f"Saving weights to: {cfg.train.save_dir}/{cfg.train.save_name}.pth\n"
         "======================\n"
     )
+
+    if cfg.pretrained_weights_path is not None and cfg.use_pretrained_weights == False:
+            logger.warning(
+                "Model weights specified but use_pretrained_weights is false. "
+                "Training is from scratch. Ensure this behaviour is intentional."
+            )
 
     training_start_time = time.time()
     try:
