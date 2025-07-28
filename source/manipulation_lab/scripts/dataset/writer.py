@@ -55,8 +55,8 @@ class DatasetWriter:
 
         self._reset_buffer()
 
-        logger.info(f"Using compression: {self.compression}")
-        logger.info(f"Using RGB as uint8: {self.rgb_as_uint8}")
+        logger.debug(f"Using compression: {self.compression}")
+        logger.debug(f"Using RGB as uint8: {self.rgb_as_uint8}")
         logger.info(f"Saving to {self.base_dir}")
 
     def _reset_buffer(self):
@@ -80,6 +80,7 @@ class DatasetWriter:
         self.episode_paused = False
         self.episode_on_disk = False
         self.episode_file_path = None
+        self._reset_buffer()
 
     def _get_next_episode_id(self):
         """
