@@ -2,9 +2,7 @@ import logging
 logger = logging.getLogger("ManipulationLab.Controller")
 
 import threading
-from typing import List, Optional
 from time import perf_counter
-import torch
 
 import manipulation_lab.scripts.control.model_handler as model_handler
 
@@ -30,14 +28,13 @@ class Controller:
         self._shared_obs = {}
         self._shared_obs_lock = threading.Lock()
 
-        self._action_buffer = []
+        self._action_buffer = [] # List of [(Scheduled step, Action)]
         self._action_buffer_lock = threading.Lock()
         self._last_action = None
         self._action_schedule = []
 
         self.control_event = control_event
 
-        self.sim_time = 0.0
         self.sim_step_count = 0
         self._last_control_step = 0
         self._next_control_step = 0 
@@ -73,6 +70,7 @@ class Controller:
         """
         with self._action_buffer_lock:
             if len(self._action_buffer) > 0:
+                # Check if current sim step is equal to the action's scheduled step
                 if self._action_buffer[0][0] <= self.sim_step_count:
                     _, action = self._action_buffer.pop(0)
                     self._last_action = action
@@ -82,7 +80,7 @@ class Controller:
                 # TODO: If we're trained on ManipLab dataset we need to consider that
                 # actions may need to be applied consistently across control steps
                 # e.g., if trained on 30Hz, we need to apply as if we operated at 60Hz
-                return None 
+                return None #self._last_action 
 
     def _get_latest_obs(self):
         """
@@ -180,10 +178,24 @@ class Controller:
         Starts the control loop asynchronously from the simulation. This is to imitate
         real-world deployment.
         """
-        logger.info(f"Starting control loop at {self.control_freq}Hz")
+        logger.info(f"Starting control loop at {self.control_freq}Hz.")
         self._next_control_step = self.sim_step_count + self._steps_per_control
         self._thread = threading.Thread(target=self.run, daemon=True)
         self._thread.start()
+
+    def reset(self):
+        """
+        Resets the state of the controller.
+        """
+        self.sim_step_count = 0
+        self._last_control_step = 0
+        self._next_control_step = 0
+
+        self._action_buffer = []
+        self._last_action = None
+        self._action_schedule = []
+
+        self._shared_obs = {}
 
     def stop(self):
         """
