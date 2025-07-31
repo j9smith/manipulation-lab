@@ -45,6 +45,7 @@ class ModelHandler:
         self.camera_keys = cfg.controller.camera_keys
         self.proprio_keys = cfg.controller.proprio_keys
         self.sensor_keys = cfg.controller.sensor_keys
+        self.oracle_keys = cfg.controller.oracle_keys
         self.model_use_structured_obs = self.cfg.controller.model_use_structured_obs
 
     def _extract_desired_obs(self, obs: dict):
@@ -105,9 +106,14 @@ class ModelHandler:
         sensor_obs = {}
         if self.sensor_keys:
             for key in self.sensor_keys:
-                sensor_obs[key] = _get_nested_data(obs, key)   
+                sensor_obs[key] = _get_nested_data(obs, key)
 
-        return camera_obs, proprio_obs, sensor_obs
+        oracle_obs = {}
+        if self.oracle_keys:
+            for key in self.oracle_keys:
+                oracle_obs[key] = _get_nested_data(obs, key)
+
+        return camera_obs, proprio_obs, sensor_obs, oracle_obs
 
     def forward(self, raw_obs: dict) -> torch.Tensor:
         """
@@ -135,7 +141,7 @@ class ModelHandler:
         - actions: torch.Tensor: A tensor of action commands of which the shape and type
         are defined by the model and specified by the user in config.
         """
-        camera_obs, proprio_obs, sensor_obs = self._extract_desired_obs(raw_obs)
+        camera_obs, proprio_obs, sensor_obs, oracle_obs = self._extract_desired_obs(raw_obs)
 
         obs = []
 
@@ -162,6 +168,11 @@ class ModelHandler:
                 for _, value in sensor_obs.items():
                     value = torch.tensor(value).to(self.cfg.device)
                     obs.append(value)
+                
+            if self.oracle_keys:
+                for _, value in oracle_obs.items():
+                    value = torch.tensor(value).to(self.cfg.device)
+                    obs.append(value)
 
             # Concatenate all target data into flat tensor
             obs = torch.cat(obs, dim=-1)
@@ -169,7 +180,7 @@ class ModelHandler:
             # Expect that models will generally require a batch dimension (B, D_total)
             if obs.ndim == 1: obs = obs.unsqueeze(0)
 
-        else: obs = (camera_obs, proprio_obs, sensor_obs)
+        else: obs = (camera_obs, proprio_obs, sensor_obs, oracle_obs)
 
         with torch.no_grad():
             try:

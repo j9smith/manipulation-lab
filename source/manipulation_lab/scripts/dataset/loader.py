@@ -35,6 +35,7 @@ def build_dataloaders(
             stride=cfg.dataset.stride,
             proprio_keys=cfg.dataset.proprio_keys,
             sensor_keys=cfg.dataset.sensor_keys,
+            oracle_keys=cfg.dataset.oracle_keys,
             image_encoder=encoder,
         )
 
@@ -134,7 +135,7 @@ def collate_fn(batch, structured_obs:bool, encoder:Optional[Module] = None):
         camera_keys = batch[0]["camera"].keys()
         for camera_key in camera_keys:
             # Stack camera_key images across batch
-            images = torch.stack([dict["camera"][camera_key] for dict in batch])
+            images = torch.stack([d["camera"][camera_key] for d in batch])
 
             B, T, C, H, W = images.shape
 
@@ -158,12 +159,17 @@ def collate_fn(batch, structured_obs:bool, encoder:Optional[Module] = None):
     if "proprio" in batch[0].keys():
         proprio_keys = batch[0]["proprio"].keys()
         for proprio_key in proprio_keys:
-            obs[proprio_key] = (torch.stack([dict["proprio"][proprio_key] for dict in batch]))
+            obs[proprio_key] = (torch.stack([d["proprio"][proprio_key] for d in batch]))
+
+    if "oracle" in batch[0].keys():
+        oracle_keys = batch[0]["oracle"].keys()
+        for oracle_key in oracle_keys:
+            obs[oracle_key] = (torch.stack([d["proprio"][proprio_key] for d in batch]))
 
     action_keys = batch[0]["actions"].keys()
     action_data = []
     for action_key in action_keys:
-        action_data.append(torch.stack([dict["actions"][action_key] for dict in batch]))
+        action_data.append(torch.stack([d["actions"][action_key] for d in batch]))
 
     actions = torch.cat(action_data, dim=-1)
 

@@ -8,9 +8,11 @@ class ObservationHandler:
         self.sensors = self.scene.sensors
 
     def get_obs(self):
+        self._get_oracle_obs()
         return {
             "sensors": self._get_sensor_obs(),
-            "robot": self._get_robot_obs()
+            "robot": self._get_robot_obs(),
+            "oracle": self._get_oracle_obs()
         }
 
     def _get_sensor_obs(self):
@@ -37,3 +39,18 @@ class ObservationHandler:
             "joint_vel": joint_vel
         }
         return robot_obs
+    
+    def _get_oracle_obs(self):
+        oracle_obs = {}
+
+        for object_name, obj in self.scene.rigid_objects.items():
+            pose = obj.data.root_link_pose_w.squeeze(0).cpu().numpy()
+            vel = obj.data.root_link_vel_w.squeeze(0).cpu().numpy()
+
+            oracle_obs[object_name] = {
+                "pose": pose,
+                "velocity": vel,
+            }
+
+        return oracle_obs
+
