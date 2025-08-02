@@ -1,6 +1,7 @@
 _target_: manipulation_lab.envs.room.tasks.stack_blocks.BlocksEnv
 cfg:
   _target_: manipulation_lab.envs.room.tasks.stack_blocks.BlocksEnvCfg
+  mode: "train"
   scene:
     _target_: manipulation_lab.envs.room.tasks.stack_blocks.BlocksSceneCfg
     robot: ${robot}
