@@ -7,7 +7,7 @@ Follows the RLDS schema:
 https://github.com/google-research/rlds
 """
 import logging
-logger = logging.getLogger("ManiplationLab.DatasetWriter")
+logger = logging.getLogger("ManipulationLab.DatasetWriter")
 
 import h5py
 from h5py import string_dtype
