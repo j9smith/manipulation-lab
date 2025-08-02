@@ -57,6 +57,7 @@ class TeleopHandler:
         self._last_phase_advance_step = 0
 
     def run_teleop(self, simulation_app):
+        self._reset_scene()
         # Compute number of sim steps before capturing observations
         # Round to account for floating point precision errors in sim_dt
         capture_frequency = round(1.0 / self.target_fps / self.sim_dt)
@@ -149,11 +150,13 @@ class TeleopHandler:
 
                 # Record observations at target FPS
                 if self.sim_steps % capture_frequency == 0:
-                    if use_policy_as_expert:
-                        logger.info("Recording policy as expert")
-                    else: logger.info("Recording teleop as expert")
+                    if self.dagger and use_policy_as_expert == False:
+                        logger.info(
+                            "Teleop override. Logging expert demonstration."
+                        )
                     is_first = (self.sim_steps == 0)
-                    is_last = False # TODO: Add _get_dones to task scene, then put it here (returns bool)
+                    task_complete, _ = self.env.get_dones()
+                    is_last = task_complete.cpu()
                     self.dataset_writer.append_frame(
                         obs=obs,
                         actions=recorded_actions,
@@ -179,7 +182,6 @@ class TeleopHandler:
             self.controller.reset()
 
         # TODO: Do some ablations here to find out what we can get rid of
-        logger.info("Resetting scene ...")
         self.env.reset()
         self.sim.step()
 
@@ -187,11 +189,6 @@ class TeleopHandler:
         self.robot.set_joint_position_target(self.robot.data.joint_pos)
         self.scene.write_data_to_sim()
 
-        settle_steps = int(0.5 / self.sim_dt)
-        for _ in range(settle_steps):
-            self.sim.step()
-            self.scene.update(self.sim_dt)
-            
         logger.info("Scene reset.")
     
     def _advance_phase(self):

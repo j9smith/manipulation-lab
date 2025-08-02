@@ -5,7 +5,7 @@ from hydra.utils import instantiate
 from manipulation_lab.scripts.control.action_handler import ActionHandler
 from manipulation_lab.scripts.control.obs_handler import ObservationHandler
 from manipulation_lab.scripts.control.controller import Controller
-import torch
+import time
 
 from threading import Event
 
@@ -45,13 +45,12 @@ class TaskRunner:
         self._reset_scene()
         self.controller.start()
 
-        max_sim_steps = int(10.0 / self.sim_dt)
-
         while simulation_app.is_running():
             # Step simulator and update sim time
             self.sim.step()
             self.step_count += 1
             self.controller.sim_step_count = self.step_count
+            self.env.sim_step_count = self.step_count
 
              # Update buffers to reflect new sim state
             self.scene.update(self.sim_dt)
@@ -68,12 +67,20 @@ class TaskRunner:
             if action is not None:
                 self.action_handler.apply(action=action)
 
-            if self.step_count >= max_sim_steps:
+            task_complete, timeout = self.env.get_dones()
+
+            if task_complete:
+                logger.info("Task completed successfully!")
+                time.sleep(2.5)
+                self._reset_scene()
+
+            if timeout:
+                logger.info("Timeout - task failed.")
+                time.sleep(2.5)
                 self._reset_scene()
 
     def _reset_scene(self):
         # TODO: Do some ablations here to find out what we can get rid of
-        logger.info("Resetting scene ...")
         self.env.reset()
         self.sim.step()
 
@@ -81,12 +88,7 @@ class TaskRunner:
         robot = self.scene.articulations["robot"]
         robot.set_joint_position_target(robot.data.joint_pos)
         self.scene.write_data_to_sim()
-
-        settle_steps = int(0.5 / self.sim_dt)
-        for _ in range(settle_steps):
-            self.sim.step()
-            self.scene.update(self.sim_dt)
-
+        
         self.step_count = 0
         self.controller.reset()
             
