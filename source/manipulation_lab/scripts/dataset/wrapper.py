@@ -1,6 +1,10 @@
+import logging
+logger = logging.getLogger("ManipulationLab.DatasetWrapper")
+
 import torch
 from torch.utils.data import Dataset
 from typing import List, Optional, Callable
+from collections import OrderedDict
 from manipulation_lab.scripts.dataset.reader import DatasetReader
 
 import time
@@ -19,7 +23,6 @@ class DatasetWrapper(Dataset):
         sensor_keys: Optional[List[str]] = None,
         transform: Optional[Callable] = None,
         image_encoder: Optional[Callable] = None,
-        structured_obs: bool = False,
         **kwargs
     ):
         """
@@ -58,7 +61,8 @@ class DatasetWrapper(Dataset):
         self.image_encoder = image_encoder
         self.encoder_device = next(self.image_encoder.parameters()).device if self.image_encoder is not None else None
 
-        self._episode_cache: dict[int, dict] = {}
+        self.max_cache_size = kwargs.get("max_cache_size", "32")
+        self._episode_cache = OrderedDict()
 
         self.index = self._build_index()
 
@@ -95,7 +99,15 @@ class DatasetWrapper(Dataset):
 
         if ep_idx not in self._episode_cache:
             self._episode_cache[ep_idx]= self.reader.load_episode(ep_idx)
-        episode = self._episode_cache[ep_idx]
+            self._episode_cache.move_to_end(ep_idx)
+
+            if (len(self._episode_cache) > int(self.max_cache_size)):
+                key, _ = self._episode_cache.popitem(last=False)
+                logger.info(f"Removing key from cache: {key}")
+
+        else:
+            episode = self._episode_cache[ep_idx]
+            self._episode_cache.move_to_end(ep_idx)
 
         data = self._get_frame_data(self, episode, ep_idx, frame_idx)
         return data
@@ -179,12 +191,13 @@ class SequentialDatasetWrapper(Dataset):
         self,
         dataset_dirs,
         episode_indices: List[int],
-        camera_keys: List[str],
         action_keys: List[str],
         sequence_length: int = 1,
         stride: int = 1,
+        camera_keys: Optional[List[str]] = None,
         proprio_keys: Optional[List[str]] = None,
         sensor_keys: Optional[List[str]] = None,
+        oracle_keys: Optional[List[str]] = None,
         image_encoder: Optional[Callable] = None,
         **kwargs
     ):
@@ -194,14 +207,16 @@ class SequentialDatasetWrapper(Dataset):
         self.action_keys = action_keys
         self.proprio_keys = proprio_keys
         self.sensor_keys = sensor_keys
+        self.oracle_keys = oracle_keys
 
         self.sequence_length = sequence_length
         self.stride = stride
 
         self.image_encoder = image_encoder
         self.encoder_device = next(self.image_encoder.parameters()).device if self.image_encoder is not None else None
-
-        self._episode_cache: dict[int, dict] = {}
+        
+        self.max_cache_size = kwargs.get("max_cache_size", 64)
+        self._episode_cache = OrderedDict() #dict[int, dict] = {}
 
         self.index = self._build_index()
 
@@ -233,7 +248,7 @@ class SequentialDatasetWrapper(Dataset):
         Returns the structure of an example episode.
         """
         return f"Example episode:\n{self.reader.describe_structure()}"
-
+    
     def __getitem__(self, item_idx: int):
         """
         Returns the target frame data at the specified index.
@@ -241,8 +256,16 @@ class SequentialDatasetWrapper(Dataset):
         ep_idx, start_frame_idx = self.index[item_idx]
 
         if ep_idx not in self._episode_cache:
-            self._episode_cache[ep_idx]= self.reader.load_episode(ep_idx)
-        episode = self._episode_cache[ep_idx]
+            episode = self.reader.load_episode(ep_idx)
+            self._episode_cache[ep_idx] = episode
+
+            if (len(self._episode_cache) > int(self.max_cache_size)):
+                key, _ = self._episode_cache.popitem(last=False)
+                logger.info(f"Removing key from cache: {key}")
+
+        else:
+            episode = self._episode_cache[ep_idx]
+            self._episode_cache.move_to_end(ep_idx)
 
         frames = []
         for i in range(self.sequence_length):
@@ -259,7 +282,7 @@ class SequentialDatasetWrapper(Dataset):
         Takes different frames and stacks them along a time dimension in a new tensor.
         """
         stacked_data = {}
-        for modality in ["camera", "proprio", "sensor", "actions"]:
+        for modality in ["camera", "proprio", "sensor", "oracle", "actions"]:
             if modality in frames[0]:
                 stacked_data[modality] = {}
                 for key in frames[0][modality].keys():
@@ -300,6 +323,14 @@ class SequentialDatasetWrapper(Dataset):
                 assert sensor.ndim == 1, f"Expected sensor data to be (N,), got {sensor.shape}"
                 sensor = torch.tensor(sensor, dtype=torch.float32)
                 sensor_obs.append(sensor)
+
+        oracle_obs = []
+        if self.oracle_keys:
+            for oracle_key in self.oracle_keys:
+                oracle = self._get_nested_data(episode["observations"], oracle_key)[frame_idx]
+                assert oracle.ndim == 1, f"Expected oracle data to be (N,), got {sensor.shape}"
+                oracle = torch.tensor(oracle, dtype=torch.float32)
+                oracle_obs.append(oracle)
                 
         actions = []
         for action_key in self.action_keys:
@@ -323,6 +354,8 @@ class SequentialDatasetWrapper(Dataset):
             data["proprio"] = { prop_key: proprio_obs[idx] for idx, prop_key in enumerate(self.proprio_keys) }
         if self.sensor_keys:
             data["sensor"] = { sensor_key: sensor_obs[idx] for idx, sensor_key in enumerate(self.sensor_keys) }
+        if self.oracle_keys:
+            data["oracle"] = { oracle_key: oracle_obs[idx] for idx, oracle_key in enumerate(self.oracle_keys) }
 
         return data
 
