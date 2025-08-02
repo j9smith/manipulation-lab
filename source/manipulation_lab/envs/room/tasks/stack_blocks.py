@@ -1,25 +1,24 @@
+# Config imports
 from isaaclab.utils import configclass
-from isaaclab.envs import ManagerBasedRLEnvCfg, ManagerBasedEnvCfg
+from omegaconf import MISSING
+
+# Env imports
+from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
 import isaaclab.sim as sim_utils
-from isaaclab.scene import InteractiveScene, InteractiveSceneCfg
 from isaaclab.sim import SimulationCfg
 from isaaclab.managers import EventTermCfg, SceneEntityCfg
 import isaaclab.envs.mdp.events as events
 
-from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
-from isaaclab.sim.spawners.lights import DomeLightCfg
-from isaaclab_assets.robots.franka import FRANKA_PANDA_HIGH_PD_CFG as FRANKA_PANDA_CFG
-from isaaclab.assets import AssetBaseCfg
-from isaaclab.assets.articulation import ArticulationCfg
-from isaaclab.assets import RigidObject, RigidObjectCfg
-
-from isaaclab.sensors.camera import CameraCfg
-
+# Scene imports
+from isaaclab.scene import InteractiveSceneCfg
 from manipulation_lab.envs.room.scene.room_scene import RoomSceneCfg
 
-from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
-
-from omegaconf import MISSING
+# Asset imports
+from isaaclab.utils.assets import ISAAC_NUCLEUS_DIR
+from isaaclab.assets import AssetBaseCfg
+from isaaclab.assets.articulation import ArticulationCfg
+from isaaclab.assets import RigidObjectCfg
+from isaaclab.sensors.camera import CameraCfg
 
 @configclass
 class BlocksSceneCfg(InteractiveSceneCfg, RoomSceneCfg):
@@ -149,10 +148,12 @@ class BlocksEnvCfg(DirectRLEnvCfg):
     sim: SimulationCfg = SimulationCfg()
     decimation: int = 1
     scene: BlocksSceneCfg = BlocksSceneCfg(env_spacing=2.5)
-    events = BlocksEventCfg()
+    #events = BlocksEventCfg()
     episode_length_s: int = 30
     observation_space: int = 1
     action_space: int = 1
+    seed=0
+    mode: str = "train"
 
 class BlocksEnv(DirectRLEnv):
     """
@@ -161,13 +162,35 @@ class BlocksEnv(DirectRLEnv):
     cfg: BlocksEnvCfg
 
     def __init__(self, cfg: BlocksEnvCfg):
+        self.mode = cfg.mode
         super().__init__(cfg)
+        print("WARNING: get_dones() not implemented.")
+
+    def _reset_idx(self, env_ids):
+        robot = self.scene.articulations["robot"]
+
+        default_joint_pos = robot.data.default_joint_pos[env_ids]
+        default_joint_vel = robot.data.default_joint_vel[env_ids]
+
+        robot.write_joint_state_to_sim(
+            position=default_joint_pos,
+            velocity=default_joint_vel,
+            env_ids=env_ids
+        )
+
+        for object_name in self.scene.rigid_objects.keys():
+            obj = self.scene.rigid_objects[object_name]
+            default_pos = obj.data.default_root_state[env_ids]
+            obj.write_root_state_to_sim(default_pos, env_ids=env_ids)
 
     def _setup_scene(self):
         pass
 
     def _get_observations(self):
         return None
+    
+    def get_dones(self):
+        pass
 
     @property
     def env_name(self):
