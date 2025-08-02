@@ -164,7 +164,7 @@ def collate_fn(batch, structured_obs:bool, encoder:Optional[Module] = None):
     if "oracle" in batch[0].keys():
         oracle_keys = batch[0]["oracle"].keys()
         for oracle_key in oracle_keys:
-            obs[oracle_key] = (torch.stack([d["proprio"][proprio_key] for d in batch]))
+            obs[oracle_key] = (torch.stack([d["oracle"][oracle_key] for d in batch]))
 
     action_keys = batch[0]["actions"].keys()
     action_data = []
