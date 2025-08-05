@@ -17,4 +17,5 @@ class MLP(nn.Module):
         )
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        if x.ndim == 3: x= x.squeeze(1)
         return self.network(x)
