@@ -10,11 +10,13 @@ from manipulation_lab.scripts.teleop.controller_interface import ControllerInter
 import time
 import torch
 import random
+import os
+import struct
 
 class TeleopHandler:
     def __init__(self, env, cfg):
         self.env = env
-        self.env.seed(random.randint(0, 2**32))
+        self.env.seed(struct.unpack("I", os.urandom(4))[0])
         self.sim = self.env.unwrapped.sim
         self.scene = self.env.unwrapped.scene
         self.robot = self.scene.articulations["robot"]
