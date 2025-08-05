@@ -9,10 +9,12 @@ from manipulation_lab.scripts.dataset.writer import DatasetWriter
 from manipulation_lab.scripts.teleop.controller_interface import ControllerInterface
 import time
 import torch
+import random
 
 class TeleopHandler:
     def __init__(self, env, cfg):
         self.env = env
+        self.env.seed(random.randint(0, 2**32))
         self.sim = self.env.unwrapped.sim
         self.scene = self.env.unwrapped.scene
         self.robot = self.scene.articulations["robot"]
