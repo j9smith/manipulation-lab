@@ -3,28 +3,38 @@ defaults:
   - launcher: launcher
   - sim: sim
   - robot: franka
-  - task: room/blocks
+  - task: room/push_blocks
   - dataset_writer: dataset_writer
   - teleoperation: teleoperation
-  - model: mlpfusion
+  - model: mlp
   - encoder: resnet18
   - encoder_weights: null
   - _self_
 
 device: cuda
 
+environment_seed: 0
+max_attempts: 10
+
 # Teleop mode
 teleop: false
 dagger: false
+force_train_setup: true
 
 # Controller config for policy deployment
 controller:
   control_frequency: 30
-  camera_keys: ["sensors/left_shoulder_camera/rgb"]
+  camera_keys: null #["sensors/wrist_camera/rgb", "sensors/scene_camera/rgb"]
   proprio_keys: ["robot/joint_pos"]
-  model_use_structured_obs: false
-  model_weights: "/home/ubuntu/Projects/manipulation_lab/weights/test_model.pth"
   sensor_keys: null
+  oracle_keys: [
+    "oracle/cuboid_blue/pose", 
+    "oracle/cuboid_blue/velocity", 
+    "oracle/cone_left/pose", 
+    "oracle/cone_right/pose"
+  ]
+  model_use_structured_obs: false
+  model_weights: "/home/ubuntu/Projects/manipulation_lab/weights/push_blocks/mlp_oracle_d4.pth"
 
 openloop:
   dataset_dir: "/home/ubuntu/Projects/manipulation_lab/datasets/room/blocks/"
