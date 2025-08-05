@@ -6,6 +6,10 @@ from manipulation_lab.scripts.control.action_handler import ActionHandler
 from manipulation_lab.scripts.control.obs_handler import ObservationHandler
 from manipulation_lab.scripts.control.controller import Controller
 import time
+import wandb
+from omegaconf import OmegaConf
+from statistics import mean
+import sys
 
 from threading import Event
 
@@ -17,6 +21,7 @@ class TaskRunner:
         # Environment variables
         self.cfg = cfg
         self.env = env
+        self.env.seed(self.cfg.environment_seed)
         self.scene = self.env.unwrapped.scene
         self.sim = self.env.unwrapped.sim
         self.sim_dt = self.sim.get_physics_dt()
@@ -42,17 +47,41 @@ class TaskRunner:
         """
         Runs the simulation loop.
         """
+        config = OmegaConf.to_container(
+            self.cfg, 
+            resolve=True, 
+            throw_on_missing=True
+        )
+
+        wandb_run_name = f"{self.env.env_name}_{self.env.task_name}"
+
+        run = wandb.init(
+        project="Manipulation Lab - Evaluation",
+        name=wandb_run_name,
+        config=config
+        )
+
+        results_table = wandb.Table(
+            columns=["Attempt", "Result", "Time Taken (s)"]
+        )
+
         self._reset_scene()
         self.controller.start()
 
-        while simulation_app.is_running():
+        attempts = 1
+        successes = 0
+        success_times = []
+
+        start_time = time.time()
+
+        while simulation_app.is_running() and attempts <= self.cfg.max_attempts:
             # Step simulator and update sim time
             self.sim.step()
             self.step_count += 1
             self.controller.sim_step_count = self.step_count
             self.env.sim_step_count = self.step_count
 
-             # Update buffers to reflect new sim state
+            # Update buffers to reflect new sim state
             self.scene.update(self.sim_dt)
 
             # Get observations and push to controller
@@ -70,14 +99,48 @@ class TaskRunner:
             task_complete, timeout = self.env.get_dones()
 
             if task_complete:
-                logger.info("Task completed successfully!")
+                successes += 1
+                time_taken = self.step_count * self.sim_dt
+                success_times.append(time_taken)
+
+                results_table.add_data(attempts, "Success", round(time_taken, 2))
+
+                logger.info(
+                    f"Task completed successfully! Score: {successes} / {attempts}, "
+                    f"time taken {time_taken:.2f}s"
+                )
+                attempts += 1
                 time.sleep(2.5)
                 self._reset_scene()
 
             if timeout:
-                logger.info("Timeout - task failed.")
+                results_table.add_data(attempts, "Failure", None)
+
+                logger.info(f"Timeout - task failed. Score: {successes} / {attempts}")
+                attempts += 1
                 time.sleep(2.5)
                 self._reset_scene()
+
+        success_rate = successes / self.cfg.max_attempts
+        average_success_time = mean(success_times) if success_times else 0.0
+
+        logger.info(
+            f"Task successes: {successes} / 10"
+        )
+
+        wandb.log({
+            "evaluation/results_table": results_table,
+        })
+
+        wandb.run.summary["evaluation/success_rate"] = success_rate
+        wandb.run.summary["evaluation/average_success_time"] = average_success_time
+
+        wandb.finish()
+
+        logger.info(
+            f"Time taken: {time.time() - start_time:.2f}s"
+        )
+        sys.exit()
 
     def _reset_scene(self):
         # TODO: Do some ablations here to find out what we can get rid of
