@@ -125,21 +125,25 @@ class TaskRunner:
         average_success_time = mean(success_times) if success_times else 0.0
 
         logger.info(
-            f"Task successes: {successes} / 10"
+            f"Task successes: {successes} / {self.cfg.max_attempts}"
         )
 
         wandb.log({
             "evaluation/results_table": results_table,
         })
 
-        wandb.run.summary["evaluation/success_rate"] = success_rate
-        wandb.run.summary["evaluation/average_success_time"] = average_success_time
+        wandb.run.summary["scene"] = self.env.env_name
+        wandb.run.summary["task"] = self.env.task_name
+        wandb.run.summary["weights"] = self.cfg.controller.model_weights
+        wandb.run.summary["success_rate"] = success_rate
+        wandb.run.summary["average_success_time"] = average_success_time
 
         wandb.finish()
 
         logger.info(
             f"Time taken: {time.time() - start_time:.2f}s"
         )
+        simulation_app.close()
         sys.exit()
 
     def _reset_scene(self):
