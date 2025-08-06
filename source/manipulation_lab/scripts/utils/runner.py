@@ -53,7 +53,11 @@ class TaskRunner:
             throw_on_missing=True
         )
 
-        wandb_run_name = f"{self.env.env_name}_{self.env.task_name}"
+        suffix = str(input(
+            f"Please enter a suffix for this run: {self.env.env_name}_{self.env.task_name}_"
+            )
+        )
+        wandb_run_name = f"{self.env.env_name}_{self.env.task_name}_{suffix}"
 
         run = wandb.init(
         project="Manipulation Lab - Evaluation",
