@@ -1,21 +1,30 @@
 defaults:
-  - model: mlpfusion
+  - model: mlp
   - encoder: resnet18
   - _self_
 
 device: cuda
 
 use_pretrained_weights: false
-pretrained_weights_path: "/home/ubuntu/Projects/manipulation_lab/weights/test_model.pth"
+pretrained_weights_path: null
 
 dataset:
   dataset_dirs: [
-    "/home/ubuntu/Projects/manipulation_lab/datasets/room/blocks/clean/",
+    "/home/ubuntu/Projects/manipulation_lab/datasets/room/push_blocks/clean/",
+    "/home/ubuntu/Projects/manipulation_lab/datasets/room/push_blocks/dagger/"
     ]
-  camera_keys: ["sensors/wrist_camera/rgb", "sensors/left_shoulder_camera/rgb"]
+  dataset_source_weights:
+    clean: 3.0
+    dagger: 1.0
+  camera_keys: #["sensors/wrist_camera/rgb", "sensors/scene_camera/rgb"]
   action_keys: ["expert/ee_deltas", "expert/gripper_deltas"]
-  proprio_keys: ["robot/joint_pos"]
+  proprio_keys: ["robot/joint_pos", "robot/ee_pose_r"]
   sensor_keys: null
+  oracle_keys: [
+    "oracle/cuboid_blue/pose_r",
+    "oracle/cone_left/pose_r", 
+    "oracle/cone_right/pose_r"
+  ]
   sequence_length: 1
   stride: 1
   structured_obs: false
@@ -35,8 +44,8 @@ optim:
   lr: 1e-5
 epochs: 10
 train:
-  save_dir: /home/ubuntu/Projects/manipulation_lab/weights
-  save_name: test_model
+  save_dir: /home/ubuntu/Projects/manipulation_lab/weights/push_blocks/oracle
+  save_name: mlp_oracle_d8
 
 
 custom_dataset: null

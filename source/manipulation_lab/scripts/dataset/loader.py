@@ -3,7 +3,7 @@ logger = logging.getLogger("ManipulationLab.DataLoader")
 
 from manipulation_lab.scripts.dataset.wrapper import DatasetWrapper, SequentialDatasetWrapper
 from manipulation_lab.scripts.dataset.reader import DatasetReader
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 from typing import Optional
 import torch
 from torch.nn import Module
@@ -39,17 +39,62 @@ def build_dataloaders(
             image_encoder=encoder,
         )
 
-        dataloaders[split] = DataLoader(
-            dataset=datasets[split],
-            batch_size=cfg.dataloader.batch_size,
-            shuffle=(split=="train"),
-            num_workers=cfg.dataloader.num_workers,
-            collate_fn=partial(
-                collate_fn, 
-                encoder=encoder,
-                structured_obs=structured_obs
+        if split == "train":
+            dagger_weight = cfg.dataset.dataset_source_weights.dagger
+            clean_weight = cfg.dataset.dataset_source_weights.clean
+
+            sample_weights = []
+            for ep_idx, _ in datasets[split].index:
+                source = datasets[split].reader.episode_sources[ep_idx]
+
+                if source == "clean": weight = clean_weight
+                elif source == "dagger": weight = dagger_weight
+
+                sample_weights.append(weight)
+
+            if len(set(sample_weights)) == 1:
+                dataloaders[split] = DataLoader(
+                    dataset=datasets[split],
+                    batch_size=cfg.dataloader.batch_size,
+                    shuffle=True,
+                    num_workers=cfg.dataloader.num_workers,
+                    collate_fn=partial(
+                        collate_fn, 
+                        encoder=encoder,
+                        structured_obs=structured_obs
+                    )
+                )
+            else:
+                sampler = WeightedRandomSampler(
+                    weights=sample_weights,
+                    num_samples=len(sample_weights),
+                    replacement=True
+                )
+
+                dataloaders[split] = DataLoader(
+                    dataset=datasets[split],
+                    batch_size=cfg.dataloader.batch_size,
+                    sampler=sampler,
+                    num_workers=cfg.dataloader.num_workers,
+                    collate_fn=partial(
+                        collate_fn, 
+                        encoder=encoder,
+                        structured_obs=structured_obs
+                    )
+                )
+
+        else:
+            dataloaders[split] = DataLoader(
+                dataset=datasets[split],
+                batch_size=cfg.dataloader.batch_size,
+                shuffle=False,
+                num_workers=cfg.dataloader.num_workers,
+                collate_fn=partial(
+                    collate_fn, 
+                    encoder=encoder,
+                    structured_obs=structured_obs
+                )
             )
-        )
     
     return dataloaders
 
@@ -63,6 +108,7 @@ def _split_episodes(reader, splits, seed):
     episode_indices = clean_indices + dagger_indices
 
     random.Random(seed).shuffle(episode_indices)
+    random.Random(seed).shuffle(clean_indices)
 
     n_test = int(splits["test"] * len(clean_indices))
     n_val = int(splits["val"] * len(clean_indices))
