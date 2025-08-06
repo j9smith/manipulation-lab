@@ -2,6 +2,7 @@ _target_: manipulation_lab.envs.room.tasks.push_blocks.PushBlocksEnv
 cfg:
   _target_: manipulation_lab.envs.room.tasks.push_blocks.PushBlocksEnvCfg
   mode: "train"
+  use_domain_randomisation: True
   episode_length_s: 10
   scene:
     _target_: manipulation_lab.envs.room.tasks.push_blocks.PushBlocksSceneCfg

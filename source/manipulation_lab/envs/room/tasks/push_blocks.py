@@ -176,7 +176,7 @@ class BlocksEventCfg:
         }
     )
 
-    randomise_robot_pose = EventTermCfg(
+    reset_robot_pose = EventTermCfg(
         func=events.reset_joints_by_offset,
         mode="reset",
         params={
@@ -184,6 +184,32 @@ class BlocksEventCfg:
             "position_range": (0.0, 0.0),
             "velocity_range": (0.0, 0.0)
         }
+    )
+
+def reset_env(env, env_ids):
+    scene = env.unwrapped.scene
+    robot = scene.articulations["robot"]
+
+    default_joint_pos = robot.data.default_joint_pos[env_ids]
+    default_joint_vel = robot.data.default_joint_vel[env_ids]
+
+    robot.write_joint_state_to_sim(
+        position=default_joint_pos,
+        velocity=default_joint_vel,
+        env_ids=env_ids
+    )
+
+    for object_name in scene.rigid_objects.keys():
+        obj = scene.rigid_objects[object_name]
+        default_pos = obj.data.default_root_state[env_ids]
+        obj.write_root_state_to_sim(default_pos, env_ids=env_ids)
+
+@configclass
+class ResetEnvCfg:
+    deterministic_env_reset = EventTermCfg(
+        func=reset_env,
+        mode="reset",
+        params={},
     )
 
 @configclass
@@ -194,12 +220,16 @@ class PushBlocksEnvCfg(DirectRLEnvCfg):
     sim: SimulationCfg = SimulationCfg()
     decimation: int = 1
     scene: PushBlocksSceneCfg = PushBlocksSceneCfg(env_spacing=2.5)
-    events = BlocksEventCfg()
+    use_domain_randomisation: bool = False
     episode_length_s: int = 10
     observation_space: int = 1
     action_space: int = 1
-    seed=0
     mode: str = "train"
+
+    def __post_init__(self):
+        self.events = (
+            BlocksEventCfg() if self.use_domain_randomisation else ResetEnvCfg()
+        )
 
 class PushBlocksEnv(DirectRLEnv):
     """
