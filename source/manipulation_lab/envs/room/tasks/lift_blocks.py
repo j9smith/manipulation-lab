@@ -110,8 +110,8 @@ class BlocksEventCfg:
         params={
             "asset_cfg": SceneEntityCfg("cuboid_blue"),
             "pose_range": {
-                "x": (-0.3, 0.3),
-                "y": (-0.1, 0.3),
+                "x": (-0.2, 0.2),
+                "y": (-0.1, 0.1),
                 "z": (0.0, 0.0)
             },
             "velocity_range": {}
@@ -156,17 +156,20 @@ class LiftBlocksEnv(DirectRLEnv):
         super().__init__(cfg)
 
     def _setup_scene(self):
-        if self.mode == "train":
-            self.scene.rigid_objects["cuboid_blue"].cfg.init_state.pos = (0.3, 0.0, 0.05)
-        else:
-            self.scene.rigid_objects["cuboid_blue"].cfg.init_state.pos = (-0.3, 0.0, 0.05)
+        pass
+        # if self.mode == "train":
+        #     self.scene.rigid_objects["cuboid_blue"].cfg.init_state.pos = (0.3, 0.0, 0.05)
+        # else:
+        #     self.scene.rigid_objects["cuboid_blue"].cfg.init_state.pos = (-0.3, 0.0, 0.05)
 
     def _get_observations(self):
         pass
     
     def get_dones(self):
-        task_complete = self.scene.rigid_objects["cuboid_blue"].data.root_link_pose_w[0, 3] > 0.5
+        task_complete = self.scene.rigid_objects["cuboid_blue"].data.root_link_pose_w[0, 2] >= 0.3
         timeout = self.sim_step_count >= self.max_sim_steps
+
+        if task_complete: print("Task complete!")
         return task_complete, timeout
 
     @property

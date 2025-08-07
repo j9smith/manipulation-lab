@@ -21,6 +21,7 @@ from isaaclab.assets import RigidObjectCfg
 from isaaclab.sensors.camera import CameraCfg
 
 import torch
+import manipulation_lab.envs.utils as utils
 
 @configclass
 class PushBlocksSceneCfg(InteractiveSceneCfg, RoomSceneCfg):
@@ -141,7 +142,7 @@ class BlocksEventCfg:
             "asset_cfg": SceneEntityCfg("cuboid_blue"),
             "pose_range": {
                 "x": (-0.05, 0.05),
-                "y": (-0.2, 0.0),
+                "y": (-0.1, 0.0),
                 "z": (0.0, 0.0)
             },
             "velocity_range": {}
@@ -155,7 +156,7 @@ class BlocksEventCfg:
             "asset_cfg": SceneEntityCfg("cone_right"),
             "pose_range": {
                 "x": (-0.05, 0.05),
-                "y": (0.0, 0.20),
+                "y": (0.0, 0.10),
                 "z": (0.0, 0.0)
             },
             "velocity_range": {}
@@ -169,7 +170,7 @@ class BlocksEventCfg:
             "asset_cfg": SceneEntityCfg("cone_left"),
             "pose_range": {
                 "x": (-0.05, 0.05),
-                "y": (0.0, 0.20),
+                "y": (0.0, 0.10),
                 "z": (0.0, 0.0)
             },
             "velocity_range": {}
@@ -186,28 +187,10 @@ class BlocksEventCfg:
         }
     )
 
-def reset_env(env, env_ids):
-    scene = env.unwrapped.scene
-    robot = scene.articulations["robot"]
-
-    default_joint_pos = robot.data.default_joint_pos[env_ids]
-    default_joint_vel = robot.data.default_joint_vel[env_ids]
-
-    robot.write_joint_state_to_sim(
-        position=default_joint_pos,
-        velocity=default_joint_vel,
-        env_ids=env_ids
-    )
-
-    for object_name in scene.rigid_objects.keys():
-        obj = scene.rigid_objects[object_name]
-        default_pos = obj.data.default_root_state[env_ids]
-        obj.write_root_state_to_sim(default_pos, env_ids=env_ids)
-
 @configclass
 class ResetEnvCfg:
     deterministic_env_reset = EventTermCfg(
-        func=reset_env,
+        func=utils.reset_env,
         mode="reset",
         params={},
     )
