@@ -28,7 +28,8 @@ class TaskRunner:
         self.control_event = Event()
 
         # Control handlers
-        self.obs_handler = ObservationHandler(env=self.env)
+        use_oracle_obs = True if self.cfg.controller.oracle_keys else False
+        self.obs_handler = ObservationHandler(env=self.env, use_oracle=use_oracle_obs)
         self.action_handler = ActionHandler(env=self.env, control_mode="delta_cartesian")
 
         # Models

@@ -4,12 +4,13 @@ import numpy as np
 import torch
 
 class ObservationHandler:
-    def __init__(self, env):
+    def __init__(self, env, use_oracle):
         self.env = env
         self.scene = self.env.unwrapped.scene
         self.robot = self.scene.articulations["robot"]
         self.sensors = self.scene.sensors
 
+        self.use_oracle = use_oracle
         self.robot_root_pose_w = self.robot.data.root_pose_w
         self.robot_xyz_w, self.robot_quat_w = self.robot_root_pose_w[:, 0:3], self.robot_root_pose_w[:, 3:7]
 
@@ -17,7 +18,7 @@ class ObservationHandler:
         return {
             "sensors": self._get_sensor_obs(),
             "robot": self._get_robot_obs(),
-            "oracle": self._get_oracle_obs()
+            "oracle": self._get_oracle_obs() if self.use_oracle else None
         }
 
     def _get_sensor_obs(self):

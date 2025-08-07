@@ -44,7 +44,9 @@ class TeleopHandler:
             
         self.teleop_controller = ControllerInterface(**cfg.teleoperation.teleop_controller)
         self.action_handler = ActionHandler(env=self.env, control_mode="delta_cartesian")
-        self.obs_handler = ObservationHandler(env=self.env)
+
+        record_oracle_obs = True if self.cfg.teleop or self.cfg.controller.oracle_keys is not None else False
+        self.obs_handler = ObservationHandler(env=self.env, use_oracle=record_oracle_obs)
         self.dataset_writer = DatasetWriter(
             env_name=self.env.env_name,
             task_name=self.env.task_name,
