@@ -1,0 +1,25 @@
+_target_: manipulation_lab.assets.robots.sawyer.SawyerCfg
+prim_path: "{ENV_REGEX_NS}/Robot"
+manipulation:
+  arm_joint_names: [
+            "right_j0", "right_j1", "right_j2", "right_j3",
+            "right_j4", "right_j5", "right_j6"
+        ]
+  gripper_joint_names: []
+  ee_body_name: "right_hand"
+init_state:
+  pos: [0.0, 0.52, 0.0]
+  rot: [-0.707, 0.0, 0.0, 0.707]
+  lin_vel: [0.0, 0.0, 0.0]
+  ang_vel: [0.0, 0.0, 0.0]
+  joint_vel:
+    ".*": 0.0
+  joint_pos:
+    head_pan: 0.0
+    right_j0: 0.0
+    right_j1: -0.785
+    right_j2: 0.0
+    right_j3: 1.05
+    right_j4: 0.0
+    right_j5: 1.3
+    right_j6: 0.0
