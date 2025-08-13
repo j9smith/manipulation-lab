@@ -28,6 +28,17 @@ from isaaclab.utils import configclass
 
 @configclass
 class FrankaPandaCfg(ArticulationCfg):
+    manipulation = {
+        "arm_joint_names": [
+            "panda_joint1", "panda_joint2", "panda_joint3", "panda_joint4",
+            "panda_joint5", "panda_joint6", "panda_joint7"
+        ],
+        "gripper_joint_names": [
+            "panda_finger_joint1", "panda_finger_joint2"
+        ],
+        "ee_body_name": "panda_hand"
+    }
+
     spawn: sim_utils.UsdFileCfg = sim_utils.UsdFileCfg(
         usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Robots/FrankaEmika/panda_instanceable.usd",
         scale=None,
