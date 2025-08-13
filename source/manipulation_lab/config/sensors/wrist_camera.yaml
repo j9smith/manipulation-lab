@@ -1,0 +1,2 @@
+_target_: manipulation_lab.assets.sensors.wrist_camera.WristCameraCfg
+prim_path: "{ENV_REGEX_NS}/Robot/${robot.manipulation.ee_body_name}/WristCamera"
