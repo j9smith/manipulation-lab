@@ -1,5 +1,6 @@
 """Applies actions to the robot."""
-
+import logging
+logger = logging.getLogger("ManipulationLab.ActionHandler")
 from isaaclab.controllers import DifferentialIKController, DifferentialIKControllerCfg
 from isaaclab.utils.math import subtract_frame_transforms
 from typing import Optional
@@ -8,7 +9,12 @@ import torch
 class ActionHandler:
     def __init__(self, env, control_mode):
         self.scene = env.unwrapped.scene
+
         self.robot = env.unwrapped.scene.articulations["robot"]
+
+        self.manipulation = self.robot.cfg.manipulation
+        self.arm_joint_idxs, self.gripper_joint_idxs = self._map_joint_names_to_index()
+
         self.control_mode = control_mode
 
         self.diff_ik_controller: Optional[DifferentialIKController] = None
@@ -37,11 +43,45 @@ class ActionHandler:
             device="cuda"
         )
 
+    def _map_joint_names_to_index(self):
+        """
+        Given the 'manipulation' attribute (dict) of the robot which details
+        the role of different joints under manipulation, map the given names
+        to their indices. 
+        """
+        try:
+            name_to_idx = {name: idx for idx, name in enumerate(self.robot.joint_names)}
+
+            arm_joint_idxs = [name_to_idx[name] for name in self.manipulation["arm_joint_names"]]
+            gripper_joint_idxs = [name_to_idx[name] for name in self.manipulation["gripper_joint_names"]]
+        except Exception as e:
+            logger.critical(f"Exception: {e}")
+            raise ValueError(
+                f"(robot config) *_joint_names should be in: {self.robot.joint_names}"
+            )
+
+        device = self.robot.device
+
+        return (
+            torch.tensor(arm_joint_idxs, device=device, dtype=torch.int), 
+            torch.tensor(gripper_joint_idxs, device=device, dtype=torch.int)
+        )
+
     def _get_end_effector_body_index(self):
         """
         Returns the index of the end effector in the body schema.
         """
-        return self.robot.num_bodies - 1
+        ee_name = self.manipulation["ee_body_name"]
+        body_names = self.robot.data.body_names
+        try:
+            ee_body_idx = body_names.index(ee_name)
+        except Exception as e:
+            logger.critical(f"Exception: {e}")
+            raise ValueError(
+                f"(robot config) ee_body_name must be one of: {body_names}"
+            )
+    
+        return ee_body_idx
 
     def _get_end_effector_jacobi_index(self):
         """
@@ -49,9 +89,9 @@ class ActionHandler:
         """
         # Root body of fixed based robots is excluded from the Jacobian
         if self.robot.is_fixed_base:
-            return self.robot.num_bodies - 2
+            return self.ee_body_idx - 1
         else:
-            return self.robot.num_bodies - 1
+            return self.ee_body_idx
 
     def _calculate_desired_joint_positions(self, action):
         """
@@ -65,17 +105,15 @@ class ActionHandler:
         # Extract only the Cartesian elements of the action tensor
         cartesian_action = action[:, :6]
 
-        # Extract only the gripper element of the action tensor (dim=1)
-        # Then broadcast the gripper action to the two finger joints (dim=2)
-        gripper_action = action[:, 6:].repeat(1, 2)
-
         # Get the Jacobian matrix for the end effector
-        jacobian = self.robot.root_physx_view.get_jacobians()[:, self.ee_jacobi_idx, :, :7]
+        jacobian = self.robot.root_physx_view.get_jacobians()[:, self.ee_jacobi_idx]
+        jacobian = jacobian.index_select(dim=2, index=self.arm_joint_idxs)
 
         # Get the end effector and the root pose in the world frame
         ee_pose_w = self.robot.data.body_pose_w[:, self.ee_body_idx]
         root_pose_w = self.robot.data.root_pose_w
-        current_joint_pos = self.robot.data.joint_pos[:, :7]
+        current_joint_pos = self.robot.data.joint_pos[:, :]
+        current_joint_pos = current_joint_pos.index_select(dim=1, index=self.arm_joint_idxs)
 
         # Calculate the end effector pose in the robot's frame
         ee_pose_r, ee_quat_r = subtract_frame_transforms(
@@ -102,12 +140,18 @@ class ActionHandler:
             joint_pos=current_joint_pos
         )
 
-        # Calculate the new gripper positions
-        previous_gripper_pos = self.robot.data.joint_pos.clone()[:, 7:]
-        new_gripper_pos = previous_gripper_pos + gripper_action
+        if len(self.gripper_joint_idxs) > 0:
+            # Extract only the gripper element of the action tensor (dim=1)
+            # Then broadcast the gripper action to the two finger joints (dim=2)
+            gripper_action = action[:, 6:].repeat(1, len(self.gripper_joint_idxs))
 
-        # Concatenate the desired joint positions with the gripper action
-        desired_joint_pos = torch.cat([desired_joint_pos, new_gripper_pos], dim=1)
+            # Calculate the new gripper positions
+            previous_gripper_pos = self.robot.data.joint_pos.clone()
+            previous_gripper_pos = previous_gripper_pos.index_select(dim=1, index=self.gripper_joint_idxs)
+            new_gripper_pos = previous_gripper_pos + gripper_action
+
+            # Concatenate the desired joint positions with the gripper action
+            desired_joint_pos = torch.cat([desired_joint_pos, new_gripper_pos], dim=1)
 
         return desired_joint_pos
 
@@ -165,11 +209,13 @@ class ActionHandler:
             self._initialise_ik_controller(use_relative_mode)
 
         desired_joint_pos = self._calculate_desired_joint_positions(action)
-        self.robot.set_joint_position_target(desired_joint_pos)
+        joint_ids = torch.cat([self.arm_joint_idxs, self.gripper_joint_idxs])
+        self.robot.set_joint_position_target(target=desired_joint_pos, joint_ids=joint_ids)
         self.scene.write_data_to_sim()
 
     def _apply_joint_pos_target(self, action):
         """
         Applies joint position target commands to the robot
         """
-        pass
+        self.robot.set_joint_position_target(target=action)
+        self.scene.write_data_to_sim()
