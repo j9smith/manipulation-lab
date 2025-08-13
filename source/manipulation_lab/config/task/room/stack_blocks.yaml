@@ -1,0 +1,13 @@
+defaults:
+  - /sensors/wrist_camera@cfg.scene.wrist_camera
+  - _self_
+
+_target_: manipulation_lab.envs.room.tasks.stack_blocks.BlocksEnv
+cfg:
+  _target_: manipulation_lab.envs.room.tasks.stack_blocks.BlocksEnvCfg
+  mode: "train"
+  scene:
+    _target_: manipulation_lab.envs.room.tasks.stack_blocks.BlocksSceneCfg
+    robot: ${robot}
+    num_envs: ${launcher.num_envs}
+    env_spacing: 2.5
