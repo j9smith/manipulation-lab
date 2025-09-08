@@ -22,6 +22,10 @@
 - [X] Gracefully handle end of episodes.
 - [] Fix bug: socket listener thread starts even when controller not connected, leading to malformed first byte and critical error **(haven't been able to reproduce)**. 
 
+## ObsHandler
+- [] Calculating objects in robot frame (inc. EE) introduces significant latency in playback. Find a way around this?
+- [] 'On demand' observation retrieval (using keys) instead of dumping full obs space and extracting keys later.
+
 ## DatasetReader
 - [] Optimise loading episodes from dataset
 

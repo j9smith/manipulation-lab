@@ -7,18 +7,23 @@ from isaaclab.envs import DirectRLEnv, DirectRLEnvCfg
 from isaaclab.sim import SimulationCfg
 from isaaclab.managers import EventTermCfg, SceneEntityCfg
 import isaaclab.envs.mdp.events as events
+import isaaclab.sim as sim_utils
 
 # Scene imports
 from isaaclab.scene import InteractiveSceneCfg
+from manipulation_lab.envs.packing_table.scene.packing_table import PackingTableSceneCfg
 
 # Asset imports
+from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 from isaaclab.assets.articulation import ArticulationCfg
+from isaaclab.sensors.camera import CameraCfg
+from isaaclab.assets import DeformableObjectCfg
 
 import manipulation_lab.envs.utils as utils
 import torch
 
 @configclass
-class SceneCfg(InteractiveSceneCfg):
+class SceneCfg(InteractiveSceneCfg, PackingTableSceneCfg):
     """
     Design the scene by specifying prim configs to be constructed by the
     simulator.
@@ -27,6 +32,49 @@ class SceneCfg(InteractiveSceneCfg):
     https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.scene.html
     """
     robot: ArticulationCfg = MISSING
+    wrist_camera: CameraCfg = MISSING
+
+    scene_camera: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/SceneCamera",
+        offset=CameraCfg.OffsetCfg(pos=(1.5, 0.0, 2.25),
+                                   rot=(0.0, -0.45, 0.0, 0.89), 
+                                   convention="world"),
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=10.0, 
+            focus_distance=400.0, 
+            horizontal_aperture=18, 
+            clipping_range=(0.1, 1.0e5)),
+        width=256,
+        height=256,
+        data_types=["rgb", "rgba", "depth"]
+    )
+
+    bear = DeformableObjectCfg(
+        prim_path="{ENV_REGEX_NS}/Bear",
+        spawn=sim_utils.UsdFileCfg(
+            usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Objects/Teddy_Bear/teddy_bear.usd",
+            deformable_props=sim_utils.DeformableBodyPropertiesCfg(),
+        ),
+        init_state=DeformableObjectCfg.InitialStateCfg(
+            pos=(0.0, -0.1, 1.05)
+        )
+    )
+
+
+    left_shoulder_camera: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/panda_link0/LeftShoulderCamera",
+        offset=CameraCfg.OffsetCfg(pos=(-0.1, 1.1, 1.9),
+                                   rot=(0.88, 0.15, 0.20, -0.41), 
+                                   convention="world"),
+        data_types=["rgb"],
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=10.0, 
+            focus_distance=400.0, 
+            horizontal_aperture=20.955, 
+            clipping_range=(0.1, 1.0e5)),
+        width=256,
+        height=256
+    )
 
 @configclass
 class RandomEventCfg:
@@ -37,11 +85,27 @@ class RandomEventCfg:
     See for more details:
     https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.managers.html#isaaclab.managers.EventTermCfg
     """
-    # We always want to reset robot pose and velocity between episodes
     reset_robot_pose = EventTermCfg(
-        func=utils.reset_robot,
+        func=utils.reset_robot_rand,
         mode="reset",
-        params={}
+        params={
+            "root_range": (0.0, 0.0),
+            "joint_pos_range": (-0.1, 0.1)
+        }
+    )
+
+    randomise_bear_placement = EventTermCfg(
+        func=events.reset_nodal_state_uniform,
+        mode="reset",
+        params={
+            "asset_cfg": SceneEntityCfg("bear"),
+            "position_range": {
+                "x": (-0.05, 0.05),
+                "y": (0.0, 0.10),
+                "z": (0.0, 0.0)
+            },
+            "velocity_range": {}
+        }
     )
 
 @configclass
@@ -64,7 +128,7 @@ class EnvCfg(DirectRLEnvCfg):
     sim: SimulationCfg = SimulationCfg()
     decimation: int = 1
     scene: SceneCfg = SceneCfg(env_spacing=2.5)
-    use_domain_randomisation: bool = False
+    use_domain_randomisation: bool = True
     episode_length_s: int = 10
     observation_space: int = 1
     action_space: int = 1
@@ -94,7 +158,9 @@ class Env(DirectRLEnv):
         sensors, articulations, or objects; define train/test splits using self.mode;
         programatically add new elements to the scene; etc.
         """
-        pass
+        robot = self.scene.articulations["robot"]
+
+        robot.cfg.init_state.pos = (0.0, 0.35, 1.0)
 
     def get_dones(self):
         """
@@ -103,7 +169,15 @@ class Env(DirectRLEnv):
         Returns:
         - task_complete, timeout (tuple(tensor, tensor)) 
         """
-        task_complete = torch.tensor(False)
+        bear_xyz = self.scene.deformable_objects["bear"].data.root_pos_w[0]
+
+        bounds_min = torch.tensor([-0.2, -0.9, 1.0], device=bear_xyz.device)
+        bounds_max = torch.tensor([0.08, -0.3, 1.2], device=bear_xyz.device)
+
+        task_complete = ((bear_xyz >= bounds_min) & (bear_xyz <= bounds_max)).all()
+
+        if task_complete: print("Task complete!")
+
         timeout = self.sim_step_count > self.max_sim_steps
         return task_complete, timeout
 

@@ -132,8 +132,11 @@ class TeleopHandler:
                     self.control_event.set()
                     controller_action = self.controller.get_action()
 
-                    if controller_action is not None:
-                        recorded_actions["policy"] = {
+                    if controller_action is None:
+                        controller_action = torch.tensor(data=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
+                    #if controller_action is not None:
+                    recorded_actions["policy"] = {
                             "ee_deltas": controller_action[:6].cpu(),
                             "gripper_deltas": controller_action[6].cpu()
                         }

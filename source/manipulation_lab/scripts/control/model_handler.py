@@ -32,9 +32,9 @@ class ModelHandler:
                 "No model weights specified. Ensure this was intentional."
             )
         self.model.to(self.device).eval()
-
+ 
         # Load image encoder if defined
-        if self.cfg.encoder is not None:
+        if self.cfg.get("encoder", None):
             self.encoder = instantiate(self.cfg.encoder)
 
             self.encoder.to(self.device).eval()
@@ -161,7 +161,7 @@ class ModelHandler:
             if self.proprio_keys:
                 for _, value in proprio_obs.items():
                     value = torch.tensor(value).to(self.device)
-                    obs.append(value)   
+                    obs.append(value)
 
             if self.sensor_keys:
                 # TODO: How do we handle multidimensional sensor data?
@@ -190,8 +190,9 @@ class ModelHandler:
                     f"Error processing model input: {e}"
                 )
                 raise ValueError(
-                    f"Ensure that config parameter 'model_use_structured_obs' "
-                    f"is correctly specified for the model you are using."
+                    "Ensure that config parameter 'model_use_structured_obs' "
+                    "is correctly specified for the model you are using, and "
+                    "you have correctly specified the observation space."
                 )
 
         return actions

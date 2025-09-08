@@ -1,0 +1,3 @@
+_target_: manipulation_lab.models.policies.mlp.MLP
+input_dim: 1040
+output_dim: 7

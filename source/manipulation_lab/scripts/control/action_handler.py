@@ -2,7 +2,7 @@
 import logging
 logger = logging.getLogger("ManipulationLab.ActionHandler")
 from isaaclab.controllers import DifferentialIKController, DifferentialIKControllerCfg
-from isaaclab.utils.math import subtract_frame_transforms
+from isaaclab.utils.math import subtract_frame_transforms, quat_apply_inverse
 from typing import Optional
 import torch
 
@@ -103,7 +103,9 @@ class ActionHandler:
             action = action.to(self.robot.device)
 
         # Extract only the Cartesian elements of the action tensor
-        cartesian_action = action[:, :6]
+        if self.diff_ik_controller.cfg.use_relative_mode:
+            cartesian_action = action[:, :6]
+        else: cartesian_action = action [:, :7]
 
         # Get the Jacobian matrix for the end effector
         jacobian = self.robot.root_physx_view.get_jacobians()[:, self.ee_jacobi_idx]
@@ -130,7 +132,7 @@ class ActionHandler:
                 ee_pos=ee_pose_r,
                 ee_quat=ee_quat_r
             )
-        else: self.diff_ik_controller.set_command(command=cartesian_action)
+        else: self.diff_ik_controller.set_command(command=cartesian_action, ee_pos=ee_pose_r, ee_quat=ee_quat_r)
 
         # Calculate joint positions to reach target pose
         desired_joint_pos = self.diff_ik_controller.compute(
@@ -143,7 +145,9 @@ class ActionHandler:
         if len(self.gripper_joint_idxs) > 0:
             # Extract only the gripper element of the action tensor (dim=1)
             # Then broadcast the gripper action to the two finger joints (dim=2)
-            gripper_action = action[:, 6:].repeat(1, len(self.gripper_joint_idxs))
+            gripper_action = (
+                action[:, 6:] if self.diff_ik_controller.cfg.use_relative_mode else action[:, 7:]
+                ).repeat(1, len(self.gripper_joint_idxs))
 
             # Calculate the new gripper positions
             previous_gripper_pos = self.robot.data.joint_pos.clone()
@@ -186,6 +190,8 @@ class ActionHandler:
                 "Delta Cartesian actions must be of length 6. "
                 f"The provided action has shape {action.shape}."
             )
+        action = action.to(self.robot.device)
+
         self._apply_ik_action(action, use_relative_mode=True)
 
     def _apply_absolute_cartesian(self, action):
@@ -194,9 +200,9 @@ class ActionHandler:
         """
         if action.dim() == 1:
             action = action.unsqueeze(0)
-        if action.shape[-1] != 7:
+        if action.shape[-1] != 8:
             raise ValueError(
-                "Absolute Cartesian actions must be of length 7. "
+                "Absolute Cartesian actions must be of length 8. "
                 f"The provided action has shape {action.shape}."
             )
         self._apply_ik_action(action, use_relative_mode=False)

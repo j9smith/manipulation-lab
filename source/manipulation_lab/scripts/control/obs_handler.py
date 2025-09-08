@@ -48,6 +48,7 @@ class ObservationHandler:
             "joint_pos": joint_pos,
             "joint_vel": joint_vel,
             "ee_pose_r": ee_pose_r,
+            "ee_pose_w": ee_pose_w[0].cpu().numpy()
         }
         return robot_obs
     
@@ -57,12 +58,12 @@ class ObservationHandler:
         for object_name, obj in self.scene.rigid_objects.items():
             obj_xyz_r, obj_quat_r = self._in_robot_frame(obj.data.root_link_pose_w)
             pose_r = np.concatenate((obj_xyz_r, obj_quat_r), axis=0)
-            pose_w = obj.data.root_link_pose_w.squeeze(0).cpu().numpy()
-            vel_w = obj.data.root_link_vel_w.squeeze(0).cpu().numpy()
+            # pose_w = obj.data.root_link_pose_w.squeeze(0).cpu().numpy()
+            # vel_w = obj.data.root_link_vel_w.squeeze(0).cpu().numpy()
 
             oracle_obs[object_name] = {
-                "pose_w": pose_w,
-                "velocity_w": vel_w,
+                # "pose_w": pose_w,
+                # "velocity_w": vel_w,
                 "pose_r": pose_r,
             }
 

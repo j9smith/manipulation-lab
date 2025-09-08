@@ -4,7 +4,7 @@ import hydra
 from omegaconf import DictConfig, OmegaConf
 from hydra.utils import instantiate
 
-@hydra.main(config_path="../config/play", config_name="config", version_base=None)
+@hydra.main(config_path="../config", config_name="play_config", version_base=None)
 def main(cfg: DictConfig):
     openloop_handler = OpenLoopHandler(cfg)
     openloop_handler.run_open_loop()

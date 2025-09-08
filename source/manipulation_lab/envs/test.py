@@ -13,12 +13,24 @@ from isaaclab.scene import InteractiveSceneCfg
 
 # Asset imports
 from isaaclab.assets.articulation import ArticulationCfg
+from isaaclab.assets import AssetBaseCfg
+from isaaclab.sensors import CameraCfg, ContactSensorCfg, RayCasterCameraCfg, ImuCfg, RayCasterCamera, ContactSensor, Imu
+from isaaclab.sensors.ray_caster.patterns import PinholeCameraPatternCfg, GridPatternCfg
+from isaaclab.sensors import RayCasterCfg
+from isaaclab.assets import RigidObjectCfg
+from isaaclab.assets import DeformableObjectCfg
+from isaaclab.utils.assets import ISAACLAB_NUCLEUS_DIR
 
 import manipulation_lab.envs.utils as utils
+import isaaclab.sim as sim_utils
 import torch
 
+from manipulation_lab.envs.packing_table.scene.packing_table import PackingTableSceneCfg
+from manipulation_lab.envs.room.scene.room_scene import RoomSceneCfg
+
+
 @configclass
-class SceneCfg(InteractiveSceneCfg):
+class SceneCfg(InteractiveSceneCfg, PackingTableSceneCfg):
     """
     Design the scene by specifying prim configs to be constructed by the
     simulator.
@@ -27,6 +39,81 @@ class SceneCfg(InteractiveSceneCfg):
     https://isaac-sim.github.io/IsaacLab/main/source/api/lab/isaaclab.scene.html
     """
     robot: ArticulationCfg = MISSING
+
+    ground: AssetBaseCfg = AssetBaseCfg(
+        prim_path="/World/defaultGroundPlane",
+        spawn=sim_utils.GroundPlaneCfg(),
+        init_state=AssetBaseCfg.InitialStateCfg(pos=(0.0, 0.0, 0.0)),
+    )
+
+    scene_camera: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/SceneCamera",
+        offset=CameraCfg.OffsetCfg(pos=(1.5, 0.0, 1.25),
+                                   rot=(0.0, -0.45, 0.0, 0.89), 
+                                   convention="world"),
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=10.0, 
+            focus_distance=400.0, 
+            horizontal_aperture=18, 
+            clipping_range=(0.1, 1.0e5)),
+        width=256,
+        height=256,
+        data_types=["rgb", "depth", "rgba", "semantic_segmentation", "instance_segmentation_fast"]
+    )
+
+    other_camera: CameraCfg = CameraCfg(
+        prim_path="{ENV_REGEX_NS}/Robot/OtherCamera",
+        offset=CameraCfg.OffsetCfg(pos=(1.5, 0.0, 1.25),
+                                   rot=(0.0, -0.45, 0.0, 0.89), 
+                                   convention="world"),
+        spawn=sim_utils.PinholeCameraCfg(
+            focal_length=10.0, 
+            focus_distance=400.0, 
+            horizontal_aperture=18, 
+            clipping_range=(0.1, 1.0e5)),
+        width=256,
+        height=256,
+        data_types=["rgb"]
+    )
+
+    # height_scanner = RayCasterCameraCfg(
+    #     prim_path="{ENV_REGEX_NS}/Robot/",
+    #     update_period=0.02,
+    #     offset=RayCasterCfg.OffsetCfg(pos=(0.0, 0.0, 20.0)),
+    #     pattern_cfg=GridPatternCfg(resolution=0.1, size=[1.6, 1.0]),
+    #     debug_vis=True,
+    #     mesh_prim_paths=["/World/defaultGroundPlane"],
+    #     attach_yaw_only=True
+    # )
+
+    # cuboid_blue = RigidObjectCfg(
+    #     prim_path="{ENV_REGEX_NS}/CuboidBlue",
+    #     spawn=sim_utils.MeshCuboidCfg(
+    #         size=(0.05, 0.05, 0.05),
+    #         rigid_props=sim_utils.RigidBodyPropertiesCfg(),
+    #         visual_material=sim_utils.PreviewSurfaceCfg(diffuse_color=(0.0, 0.0, 1.0)),
+    #         physics_material=sim_utils.RigidBodyMaterialCfg(),
+    #         collision_props=sim_utils.CollisionPropertiesCfg()
+    #     ),
+    #     init_state=RigidObjectCfg.InitialStateCfg(pos=(0.0, -0.2, 0.05)),
+    # )
+
+
+    # bear = DeformableObjectCfg(
+    #     prim_path="{ENV_REGEX_NS}/Bear",
+    #     spawn=sim_utils.UsdFileCfg(
+    #         usd_path=f"{ISAACLAB_NUCLEUS_DIR}/Objects/Teddy_Bear/teddy_bear.usd",
+    #         deformable_props=sim_utils.DeformableBodyPropertiesCfg(),
+    #     ),
+    #     init_state=DeformableObjectCfg.InitialStateCfg(
+    #         pos=(0.0, 0.1, 0.05)
+    #     )
+    # )
+
+    dome_light: AssetBaseCfg = AssetBaseCfg(
+        prim_path="/World/Light",
+        spawn=sim_utils.DomeLightCfg(intensity=3000.0, color=(0.5, 0.5, 0.5)),
+    )
 
 @configclass
 class RandomEventCfg:
@@ -94,7 +181,30 @@ class Env(DirectRLEnv):
         sensors, articulations, or objects; define train/test splits using self.mode;
         programatically add new elements to the scene; etc.
         """
-        pass
+        robot = self.scene.articulations["robot"]
+
+        robot.cfg.init_state.pos = (0.0, 0.0, -5.0)
+
+        # ray_caster_cfg = RayCasterCameraCfg(
+        #     prim_path="/World/envs/env_0/Sensors/RayCasterCamera",
+        #     mesh_prim_paths=["/World/defaultGroundPlane"],
+        #     offset=RayCasterCameraCfg.OffsetCfg(
+        #         pos=(0.08, 0.0, 0.0),
+        #         rot=(0.0, 0.0, 0.0, 1.0),
+        #     ),
+        #     pattern_cfg=PinholeCameraPatternCfg(width=64, height=48),
+        # )
+        # RayCasterCamera(ray_caster_cfg)
+
+        # contact_sensor_cfg = ContactSensorCfg(
+        #     prim_path="/World/envs/env_0//Robot/panda_hand"
+        # )
+        # ContactSensor(contact_sensor_cfg)
+
+        # imu_cfg = ImuCfg(
+        #     prim_path="/World/envs/env_0//Robot/panda_hand/imu",
+        # )
+        # Imu(imu_cfg)
 
     def get_dones(self):
         """

@@ -14,6 +14,9 @@ class R3MEncoder(Module):
         self.encoder.to(device)
 
     def forward(self, img):
+        """
+        R3M resizes and normalises internally
+        """
         if img.ndim == 3:
             assert img.shape[0] == 3, f"Expected channel dimension to be 3, got {img.shape[0]}"
             img = img.unsqueeze(0)

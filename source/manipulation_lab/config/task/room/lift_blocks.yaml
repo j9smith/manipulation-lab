@@ -2,7 +2,7 @@ _target_: manipulation_lab.envs.room.tasks.lift_blocks.LiftBlocksEnv
 cfg:
   _target_: manipulation_lab.envs.room.tasks.lift_blocks.LiftBlocksEnvCfg
   mode: "train"
-  episode_length_s: 10
+  episode_length_s: 15
   scene:
     _target_: manipulation_lab.envs.room.tasks.lift_blocks.LiftBlocksSceneCfg
     robot: ${robot}

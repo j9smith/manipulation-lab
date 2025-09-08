@@ -216,7 +216,7 @@ class SequentialDatasetWrapper(Dataset):
         self.encoder_device = next(self.image_encoder.parameters()).device if self.image_encoder is not None else None
         
         self.max_cache_size = kwargs.get("max_cache_size", 64)
-        self._episode_cache = OrderedDict() #dict[int, dict] = {}
+        self._episode_cache = OrderedDict()
 
         self.index = self._build_index()
 
@@ -274,7 +274,7 @@ class SequentialDatasetWrapper(Dataset):
             frames.append(frame)
 
         data = self._stack_frame_data(frames)
-            
+
         return data
 
     def _stack_frame_data(self, frames: list[dict]):

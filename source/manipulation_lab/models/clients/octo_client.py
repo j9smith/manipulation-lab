@@ -37,11 +37,11 @@ class OctoClient:
 
     def __call__(self, obs: tuple):
         self.step += 1
-        camera_obs, proprio_obs, _ = obs
+        camera_obs, proprio_obs, _, _ = obs
         
         # Camera data actually comes in as nparray.
         # TODO: Deal with it numpy native instead of converting to tensor
-        prim_camera = torch.Tensor(camera_obs["sensors/left_shoulder_camera/rgb"])
+        prim_camera = torch.Tensor(camera_obs["sensors/scene_camera/rgb"])
         wrist_camera = torch.Tensor(camera_obs["sensors/wrist_camera/rgb"])
         joint_pos = proprio_obs["robot/joint_pos"]
 

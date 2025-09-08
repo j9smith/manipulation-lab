@@ -36,14 +36,15 @@ class ResNet18Encoder(nn.Module):
         ])
 
     def forward(self, x):
-        x = x.to(self.device)
+        x = x.to(self.device).float()
+        assert x.max().item() > 0, f"Input tensor already looks normalised."
+        x = x / 255.0
+
         if x.ndim == 3:
             assert x.shape[0] == 3, f"Expected channel dimension to be 3, got {x.shape[0]}"
             x = x.unsqueeze(0)
         assert x.ndim == 4, f"Expected (B, C, H, W), got {x.shape}"
 
-        if x.dtype == torch.uint8:
-            x = x.float() / 255.0
 
         x = self.transform(x)
 

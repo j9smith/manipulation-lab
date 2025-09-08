@@ -1,0 +1,11 @@
+_target_: manipulation_lab.envs.room.tasks.open_drawer.Env
+cfg:
+  _target_: manipulation_lab.envs.room.tasks.open_drawer.EnvCfg
+  mode: "train"
+  use_domain_randomisation: True
+  episode_length_s: 10
+  scene:
+    _target_: manipulation_lab.envs.room.tasks.open_drawer.SceneCfg
+    robot: ${robot}
+    num_envs: ${launcher.num_envs}
+    env_spacing: 2.5

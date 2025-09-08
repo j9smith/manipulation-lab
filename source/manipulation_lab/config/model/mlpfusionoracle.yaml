@@ -1,0 +1,6 @@
+_target_: manipulation_lab.models.policies.mlp_fusion.MLPFusionOracle
+sequence_length: 2
+input_dim: 37
+proprio_input_dim: 16
+oracle_input_dim: 21
+output_dim: 7

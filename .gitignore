@@ -6,6 +6,7 @@ __pycache__/
 .DS_Store
 .ipynb_checkpoints/
 datasets/
+static_datasets/
 outputs/
 wandb/
 weights/

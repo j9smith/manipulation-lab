@@ -1,0 +1,64 @@
+id: "mlab_vision_basic"
+version: 1.0
+
+metadata:
+    name: "Manipulation Lab - Vision Basic"
+    description: "Compare imitation learning policies using visual input of basic manipulation tasks using the Franka Panda."
+    isaacsim_version: "4.5.0"
+    isaaclab_version: "1.2.2"
+
+global_defaults:
+    robot: franka
+    action_space: delta_cartesian
+    attempts_per_seed: 10
+    seeds: [0, 1, 2]
+    sim:
+        sim_frequency_hz: 60
+        gravity: [0.0, 0.0, -9.81]
+
+protocol:
+    demos_per_task: 20
+
+metrics:
+    average_success_rate:
+        aggregation: "macro"
+    time_to_success:
+        aggregation: "macro"
+
+tasks:
+    lift_blocks:
+        scene: "room"
+        task: "lift_blocks"
+        path: "manipulation_lab/envs/room/tasks/lift_blocks.py"
+        git_hash: "eecc69b"
+        use_domain_randomisation: true
+        setup_config: "train"
+        max_episode_length_s: 10
+        observation_space:
+            camera_keys: ["sensors/scene_camera/rgb", "sensors/wrist_camera/rgb"]
+            proprio_keys: ["robot/joint_pos", "robot/ee_pose_r"]
+            oracle_keys: null
+    push_blocks:
+        scene: "room"
+        task: "push_blocks"
+        path: "manipulation_lab/envs/room/tasks/push_blocks.py"
+        git_hash: "eecc69b"
+        use_domain_randomisation: true
+        setup_config: "train"
+        max_episode_length_s: 15
+        observation_space:
+            camera_keys: ["sensors/scene_camera/rgb", "sensors/wrist_camera/rgb"]
+            proprio_keys: ["robot/joint_pos", "robot/ee_pose_r"]
+            oracle_keys: null
+    stack_blocks:
+        scene: "room"
+        task: "stack_blocks"
+        path: "manipulation_lab/envs/room/tasks/stack_blocks.py"
+        git_hash: "6c01159"
+        use_domain_randomisation: true
+        setup_config: "train"
+        max_episode_length_s: 25
+        observation_space:
+            camera_keys: ["sensors/scene_camera/rgb", "sensors/wrist_camera/rgb"]
+            proprio_keys: ["robot/joint_pos", "robot/ee_pose_r"]
+            oracle_keys: null

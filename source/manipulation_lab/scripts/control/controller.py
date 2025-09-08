@@ -43,6 +43,11 @@ class Controller:
         self._thread = None
 
         sim_freq = 1.0 / self.sim_dt
+
+        if control_freq > sim_freq: raise ValueError(
+            f"Control frequency ({control_freq}) cannot exceed simulator frequency ({sim_freq})."
+        )
+
         ratio = sim_freq / control_freq
         if ratio % 1 != 0:
             drift_per_step = (ratio % 1) * self.sim_dt
@@ -74,13 +79,14 @@ class Controller:
                 if self._action_buffer[0][0] <= self.sim_step_count:
                     _, action = self._action_buffer.pop(0)
                     self._last_action = action
+
                     return action
                 else: return None
             else:
                 # TODO: If we're trained on ManipLab dataset we need to consider that
                 # actions may need to be applied consistently across control steps
                 # e.g., if trained on 30Hz, we need to apply as if we operated at 60Hz
-                return None #self._last_action 
+                return self._last_action 
 
     def _get_latest_obs(self):
         """
@@ -116,7 +122,7 @@ class Controller:
         sim_steps_per_action = int(sim_steps_per_control_step / chunk_size)
 
         # The sim step of the first action (i.e., on the next control step)
-        action_step = self._next_control_step
+        action_step = self._next_control_step - sim_steps_per_control_step
 
         # Schedule actions evenly across the control step
         with self._action_buffer_lock:
@@ -125,11 +131,13 @@ class Controller:
                 self._action_buffer.append((action_step, actions[i]))
                 action_step += sim_steps_per_action
         
+        
     def _step(self):
         """
         Performs a single control step. 
         """
         # TODO: What about unstructured data?
+
         inference_start_time = perf_counter()
 
         raw_obs = self._get_latest_obs()

@@ -1,6 +1,6 @@
 defaults:
-  - model: mlp
-  - encoder: resnet18
+  - model: mlpfusion
+  - encoder: r3m
   - _self_
 
 device: cuda
@@ -11,22 +11,18 @@ pretrained_weights_path: null
 dataset:
   dataset_dirs: [
     "/home/ubuntu/Projects/manipulation_lab/datasets/room/push_blocks/clean/",
-    "/home/ubuntu/Projects/manipulation_lab/datasets/room/push_blocks/dagger/"
+    "/home/ubuntu/Projects/manipulation_lab/datasets/test/room/push_blocks/dagger/"
     ]
   dataset_source_weights:
-    clean: 3.0
+    clean: 2.0
     dagger: 1.0
-  camera_keys: #["sensors/wrist_camera/rgb", "sensors/scene_camera/rgb"]
+  camera_keys: ["sensors/wrist_camera/rgb", "sensors/scene_camera/rgb"]
   action_keys: ["expert/ee_deltas", "expert/gripper_deltas"]
   proprio_keys: ["robot/joint_pos", "robot/ee_pose_r"]
   sensor_keys: null
-  oracle_keys: [
-    "oracle/cuboid_blue/pose_r",
-    "oracle/cone_left/pose_r", 
-    "oracle/cone_right/pose_r"
-  ]
-  sequence_length: 1
-  stride: 1
+  oracle_keys: null
+  sequence_length: 2
+  stride: 2
   structured_obs: false
   splits:
     train: 0.8
@@ -34,28 +30,20 @@ dataset:
     test: 0.1
   seed: 0
 
-# Use default dataloader
 dataloader:
   batch_size: 16
   shuffle: true
-  num_workers: 0 # Be cautious raising above 0 - OOM errors 
+  num_workers: 0
 
 optim:
   lr: 1e-5
-epochs: 10
+epochs: 15
 train:
-  save_dir: /home/ubuntu/Projects/manipulation_lab/weights/push_blocks/oracle
-  save_name: mlp_oracle_d8
-
+  save_dir: /home/ubuntu/Projects/manipulation_lab/weights/stack_blocks/mlpfusion_r3m
+  save_name: mlpfusion_r3m_d1
 
 custom_dataset: null
-# Use custom dataloader. _target_ must be a valid torch.DataLoader
 custom_dataloader: null
-  #_target_: path.to.custom.dataloader.class
-  #dataset: _target_ must be a valid torch.Dataset
-  #  _target_: path.to.custom.dataset.class
-  # ... etc.
-
 
 
 

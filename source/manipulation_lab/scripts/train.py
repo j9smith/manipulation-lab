@@ -27,7 +27,7 @@ def main(cfg: DictConfig):
     wandb_run_name = input("Enter a save name for this W&B run: ").strip()
 
     run = wandb.init(
-        project="Manipulation Lab",
+        project="Manipulation Lab - Training",
         name=wandb_run_name,
         config=config
     )
@@ -90,7 +90,7 @@ def main(cfg: DictConfig):
 
     optimiser = torch.optim.Adam(
         model.parameters(),
-        lr=cfg.optim.lr
+        lr=float(cfg.optim.lr)
     )
 
     logger.info(

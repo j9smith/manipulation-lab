@@ -1,0 +1,65 @@
+defaults:
+  - /sensors/wrist_camera@cfg.scene.wrist_camera
+  - _self_
+
+# Replace {SCENE} with the task's scene folder - e.g., 'room', 'kitchen'
+# Replace {TASK} with the task's .py file - e.g., 'stack_blocks', 'push_blocks'
+_target_: manipulation_lab.envs.packing_table.tasks.test.Env
+cfg:
+  _target_: manipulation_lab.envs.packing_table.tasks.test.EnvCfg
+  mode: "train"
+  scene:
+    _target_: manipulation_lab.envs.packing_table.tasks.test.SceneCfg
+    robot: ${robot}
+    num_envs: ${launcher.num_envs}
+    env_spacing: 2.5
+
+
+defaults:
+  - model: mlpfusion
+  - encoder: resnet18
+  - _self_
+
+device: cuda
+
+use_pretrained_weights: false
+pretrained_weights_path: null
+
+dataset:
+  dataset_dirs: [
+    "/home/ubuntu/Projects/manipulation_lab/datasets/room/stack_blocks/clean/",
+    ]
+  dataset_source_weights:
+    clean: 2.0
+    dagger: 1.0
+  camera_keys: ["sensors/wrist_camera/rgb", "sensors/scene_camera/rgb"]
+  action_keys: ["expert/ee_deltas", "expert/gripper_deltas"]
+  proprio_keys: ["robot/joint_pos", "robot/ee_pose_r"]
+  sensor_keys: null
+  oracle_keys: null
+  sequence_length: 2
+  stride: 2
+  structured_obs: false
+  splits:
+    train: 0.8
+    val: 0.1
+    test: 0.1
+  seed: 0
+
+dataloader:
+  batch_size: 16
+  shuffle: true
+  num_workers: 0
+
+optim:
+  lr: 1e-5
+epochs: 10
+train:
+  save_dir: /home/ubuntu/Projects/manipulation_lab/weights/example/example_architecture
+  save_name: example_model
+
+
+
+
+
+

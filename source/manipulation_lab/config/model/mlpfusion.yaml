@@ -1,6 +1,6 @@
 _target_: manipulation_lab.models.policies.mlp_fusion.MLPFusionFrameStacked
-sequence_length: 1
-input_dim: 1033
+sequence_length: 2
+input_dim: 1040
 img_input_dim: 1024
-proprio_input_dim: 9
+proprio_input_dim: 16
 output_dim: 7

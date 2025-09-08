@@ -30,7 +30,7 @@ class TaskRunner:
         # Control handlers
         use_oracle_obs = True if self.cfg.controller.oracle_keys else False
         self.obs_handler = ObservationHandler(env=self.env, use_oracle=use_oracle_obs)
-        self.action_handler = ActionHandler(env=self.env, control_mode="delta_cartesian")
+        self.action_handler = ActionHandler(env=self.env, control_mode=self.cfg.controller.action_space)
 
         # Models
         self.model = None

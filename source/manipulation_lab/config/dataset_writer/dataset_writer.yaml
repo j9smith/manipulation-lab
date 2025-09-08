@@ -1,4 +1,4 @@
-save_dir: "/home/ubuntu/Projects/manipulation_lab/datasets/"
+save_dir: "/home/ubuntu/Projects/manipulation_lab/datasets/test/"
 target_fps: 30
 compression: "gzip"
 buffer_size: 10000

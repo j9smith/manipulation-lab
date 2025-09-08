@@ -1,0 +1,15 @@
+defaults:
+  - _self_
+
+# Replace {SCENE} with the task's scene folder - e.g., 'room', 'kitchen'
+# Replace {TASK} with the task's .py file - e.g., 'stack_blocks', 'push_blocks'
+_target_: manipulation_lab.envs.test.Env
+cfg:
+  _target_: manipulation_lab.envs.test.EnvCfg
+  use_domain_randomisation: true
+  mode: "train"
+  scene:
+    _target_: manipulation_lab.envs.test.SceneCfg
+    robot: ${robot}
+    num_envs: ${launcher.num_envs}
+    env_spacing: 2.5

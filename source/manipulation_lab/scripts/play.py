@@ -1,9 +1,8 @@
 import logging
 logger = logging.getLogger("ManipulationLab")
 
-
-from isaaclab.app import AppLauncher
 # Launch the simulation app
+from isaaclab.app import AppLauncher
 launch_cfg = {
     "headless": False,
     "enable_cameras": True,
@@ -30,7 +29,6 @@ import manipulation_lab.scripts.patch._resolve_names_patch
 logger.info("Patched string_utils.resolve_matching_names_values with manipulation_lab.scripts.utils._resolve_names_patch._patched_resolve_names_values")
 logger.info("Patched configclass._validate with manipulation_lab.scripts.utils._validation_patch._patched_validate")
 
-
 @hydra.main(config_path="../config/", config_name="play_config", version_base=None)
 def main(cfg: DictConfig):
     # Create the environment from Hydra config
@@ -51,14 +49,14 @@ def main(cfg: DictConfig):
 
 def replay_trajectory(env, sim, scene, sim_dt):
     import manipulation_lab.scripts.dataset.reader as reader
-    reader = reader.DatasetReader(dataset_dirs=["/home/ubuntu/Projects/manipulation_lab/static_datasets/room/blocks/clean"])
+    reader = reader.DatasetReader(dataset_dirs=["/home/ubuntu/Projects/manipulation_lab/datasets/room/push_blocks/"])
     episode = reader.load_episode(0)
     import manipulation_lab.scripts.control.action_handler as action_handler
-    action_handler = action_handler.ActionHandler(env, control_mode="delta_cartesian")
+    action_handler = action_handler.ActionHandler(env, control_mode="absolute_cartesian")
     import numpy as np
     import torch
     
-    ee_deltas = episode["actions"]["expert"]["ee_deltas"]
+    ee_deltas = episode["observations"]["robot"]["ee_pose_w"] #episode["actions"]["expert"]["ee_deltas"]
     gripper_deltas = episode["actions"]["expert"]["gripper_deltas"]
     logger.info(f"ee deltas: {ee_deltas}")
     logger.info(f"gripper deltas: {gripper_deltas}")
